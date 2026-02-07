@@ -1,13 +1,15 @@
+
 import React, { useContext, useState } from 'react';
 import { AppContext } from '../App';
 import { CURRENCY_SYMBOL, CRYPTO_SYMBOL } from '../constants';
 import { MarketChart } from './Market'; 
 import StakingPanel from './Staking';
 import SettingsPanel from './Settings';
+import RankingPanel from './Ranking';
 import { 
   ArrowUpRight, ArrowDownRight, Wallet, TrendingUp, History, 
   Lock, AlertCircle, Eye, EyeOff, Send, QrCode, 
-  Smartphone, Barcode, ArrowRightLeft, User as UserIcon, X
+  Smartphone, Barcode, ArrowRightLeft, User as UserIcon, X, Trophy
 } from 'lucide-react';
 import { buyCrypto, sellCrypto, transferFiat } from '../services/api';
 
@@ -118,7 +120,7 @@ const Dashboard: React.FC<{ currentView: string, setView: (v: string) => void }>
           <QuickActionButton icon={QrCode} label="Pix" onClick={() => setShowTransferModal(true)} />
           <QuickActionButton icon={Barcode} label="Pagar" onClick={() => alert("Serviço indisponível no momento. Tente novamente mais tarde.")} />
           <QuickActionButton icon={Send} label="Transferir" onClick={() => setShowTransferModal(true)} />
-          <QuickActionButton icon={Smartphone} label="Recarga" onClick={() => alert("Serviço em manutenção.")} />
+          <QuickActionButton icon={Trophy} label="Rankings" onClick={() => setView('ranking')} />
           <QuickActionButton icon={TrendingUp} label="Exchange" onClick={() => setView('market')} />
           <QuickActionButton icon={Lock} label="Staking" onClick={() => setView('staking')} />
         </div>
@@ -292,6 +294,7 @@ const Dashboard: React.FC<{ currentView: string, setView: (v: string) => void }>
   switch (currentView) {
     case 'dashboard': return <Overview />;
     case 'market': return <MarketView />;
+    case 'ranking': return <RankingPanel />;
     case 'staking': return <StakingPanel />;
     case 'settings': return <SettingsPanel />;
     case 'notifications': return <NotificationsView />;

@@ -276,6 +276,41 @@ export const generateSystemDump = () => {
   }, null, 2);
 };
 
+// --- RANKING SERVICES ---
+
+export const getRankings = async () => {
+  await networkDelay();
+  const users = getTable<User[]>(TBL_USERS, []);
+  
+  const balanceRanking = [...users]
+    .sort((a, b) => b.balanceCrypto - a.balanceCrypto)
+    .map((u, index) => ({
+      position: index + 1,
+      displayName: u.name.split(' ')[0] + (u.name.split(' ').length > 1 ? ` ${u.name.split(' ')[1][0]}.` : ''),
+      value: u.balanceCrypto,
+      userId: u.id
+    }));
+
+  const volumeRanking = users.map(u => {
+    const totalVolume = u.transactions
+      .filter(tx => tx.type === TransactionType.BUY || tx.type === TransactionType.SELL)
+      .reduce((acc, tx) => acc + (tx.amountFiat || 0), 0);
+    
+    return {
+      userId: u.id,
+      displayName: u.name.split(' ')[0] + (u.name.split(' ').length > 1 ? ` ${u.name.split(' ')[1][0]}.` : ''),
+      value: totalVolume
+    };
+  })
+  .sort((a, b) => b.value - a.value)
+  .map((u, index) => ({
+    position: index + 1,
+    ...u
+  }));
+
+  return { balanceRanking, volumeRanking };
+};
+
 // Outros métodos delegados para simplificar
 export const transferFiat = async (senderId: string, email: string, amount: number) => {
   const users = getTable<User[]>(TBL_USERS, []);

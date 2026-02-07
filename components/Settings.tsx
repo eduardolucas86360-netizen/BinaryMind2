@@ -18,8 +18,11 @@ const SettingsPanel: React.FC = () => {
   const updateSettings = (key: keyof typeof user.settings, val: any) => {
     const updatedUser = { ...user, settings: { ...user.settings, [key]: val } };
     setUser(updatedUser);
-    localStorage.setItem('core_users_v1', JSON.stringify(
-      JSON.parse(localStorage.getItem('core_users_v1') || '[]').map((u: User) => u.id === user.id ? updatedUser : u)
+    
+    // Key corrected to match TBL_USERS in api.ts
+    const DB_KEY = 'binarymind_ledger_v1';
+    localStorage.setItem(DB_KEY, JSON.stringify(
+      JSON.parse(localStorage.getItem(DB_KEY) || '[]').map((u: User) => u.id === user.id ? updatedUser : u)
     ));
   };
 

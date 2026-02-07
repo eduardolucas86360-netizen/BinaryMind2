@@ -1,9 +1,10 @@
+
 import React, { useContext } from 'react';
 import { AppContext } from '../App';
 import { UserRole } from '../types';
 import { 
   LayoutDashboard, TrendingUp, Lock, Settings, LogOut, 
-  ShieldCheck, Bell
+  ShieldCheck, Bell, Trophy
 } from 'lucide-react';
 import { Logo } from './Logo';
 
@@ -46,6 +47,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onLogout, currentView, setVie
         <nav className="flex-1 px-4 space-y-2 mt-4">
           <NavItem id="dashboard" icon={LayoutDashboard} label="Visão Geral" />
           <NavItem id="market" icon={TrendingUp} label="Mercado" />
+          <NavItem id="ranking" icon={Trophy} label="Rankings" />
           <NavItem id="staking" icon={Lock} label="Renda Passiva" />
           <NavItem id="notifications" icon={Bell} label={`Notificações ${unreadCount > 0 ? `(${unreadCount})` : ''}`} />
           <NavItem id="settings" icon={Settings} label="Configurações" />
@@ -84,6 +86,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onLogout, currentView, setVie
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-dark-900 border-t border-dark-800 flex justify-around p-3 z-50">
           <button onClick={() => setView('dashboard')} className={currentView === 'dashboard' ? 'text-gold-500' : 'text-zinc-500'}><LayoutDashboard /></button>
           <button onClick={() => setView('market')} className={currentView === 'market' ? 'text-gold-500' : 'text-zinc-500'}><TrendingUp /></button>
+          <button onClick={() => setView('ranking')} className={currentView === 'ranking' ? 'text-gold-500' : 'text-zinc-500'}><Trophy /></button>
           <button onClick={() => setView('settings')} className={currentView === 'settings' ? 'text-gold-500' : 'text-zinc-500'}><Settings /></button>
           {user?.role === UserRole.ADMIN && (
              <button onClick={() => setView('admin')} className={currentView === 'admin' ? 'text-red-500' : 'text-zinc-500'}><ShieldCheck /></button>
