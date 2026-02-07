@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState, useEffect, createContext } from 'react';
 import { 
   User, MarketData, UserRole 
 } from './types';
@@ -32,43 +32,38 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<string>('dashboard');
   const [privacyMode, setPrivacyMode] = useState(false);
 
-  // Initialize App
+  // Initialize Server-Client Bridge
   useEffect(() => {
-    // 1. Initialize Database / Persistence Layer
     initializeDB();
-
-    // 2. Start Core Banking Services (Workers)
     initializeBankingCore();
     
-    // 3. Authenticate & Load State
-    const init = async () => {
-      try {
-        const u = await getCurrentUser();
-        setUser(u);
-        const m = await runMarketEngine();
-        setMarket(m);
-      } catch (e) {
-        console.error("Initialization Error:", e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    init();
-
-    // Polling for UI Updates (Client perspective)
-    const interval = setInterval(async () => {
-      // Refresh Market State
+    const syncWithServer = async () => {
+      const u = await getCurrentUser();
+      setUser(u);
       const m = await runMarketEngine();
       setMarket(m);
-      
-      // Refresh User State from "DB" if logged in
-      if (localStorage.getItem('binarymind_auth_token')) {
-         const u = await getCurrentUser();
-         if (u) setUser(u);
-      }
-    }, 10000);
+      setLoading(false);
+    };
 
-    return () => clearInterval(interval);
+    syncWithServer();
+
+    // ESCUTA DE EVENTO DO SERVIDOR (Cross-tab and Internal API)
+    const handleUpdate = () => {
+      getCurrentUser().then(setUser);
+      runMarketEngine().then(setMarket);
+    };
+
+    window.addEventListener('storage', handleUpdate); // Evento nativo para outras abas
+    window.addEventListener('storage_update', handleUpdate); // Evento customizado para a mesma aba
+
+    // Polling de redundância (15s)
+    const interval = setInterval(handleUpdate, 15000);
+
+    return () => {
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener('storage_update', handleUpdate);
+      clearInterval(interval);
+    };
   }, []);
 
   const refreshUser = async () => {
@@ -95,7 +90,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-dark-950 flex flex-col items-center justify-center text-gold-500 gap-4">
         <Loader2 className="animate-spin h-10 w-10" />
-        <span className="text-sm font-mono tracking-widest uppercase">Estabelecendo Conexão Segura...</span>
+        <span className="text-sm font-mono tracking-widest uppercase">Conectando ao Central Banking Core...</span>
       </div>
     );
   }
