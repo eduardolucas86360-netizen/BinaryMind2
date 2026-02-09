@@ -91,8 +91,11 @@ export const buyCrypto = async (userId: string, amount: number, currentPrice: nu
   const users = readDB<User[]>(TBL_USERS, []);
   const idx = users.findIndex(u => u.id === userId);
   if (idx === -1) throw new Error("Usuário não encontrado.");
+  if (amount <= 0) throw new Error("Quantidade deve ser positiva.");
+
   const totalCost = amount * currentPrice;
   if (users[idx].balanceFiat < totalCost) throw new Error("Saldo Fiat insuficiente.");
+  
   users[idx].balanceFiat -= totalCost;
   users[idx].balanceCrypto += amount;
   users[idx].transactions.unshift({
@@ -108,8 +111,11 @@ export const sellCrypto = async (userId: string, amount: number, currentPrice: n
   const users = readDB<User[]>(TBL_USERS, []);
   const idx = users.findIndex(u => u.id === userId);
   if (idx === -1) throw new Error("Usuário não encontrado.");
+  if (amount <= 0) throw new Error("Quantidade deve ser positiva.");
+
   if (users[idx].balanceCrypto < amount) throw new Error("Saldo MDC insuficiente.");
   const totalGain = amount * currentPrice;
+  
   users[idx].balanceFiat += totalGain;
   users[idx].balanceCrypto -= amount;
   users[idx].transactions.unshift({
@@ -126,9 +132,13 @@ export const transferFiat = async (senderId: string, recipientEmail: string, amo
   const senderIdx = users.findIndex(u => u.id === senderId);
   const recIdx = users.findIndex(u => u.email.toLowerCase() === recipientEmail.toLowerCase());
   if (senderIdx === -1 || recIdx === -1) throw new Error("Erro na transferência de fundos.");
+  if (amount <= 0) throw new Error("Valor de transferência inválido.");
+
   if (users[senderIdx].balanceFiat < amount) throw new Error("Saldo insuficiente para transferência.");
+  
   users[senderIdx].balanceFiat -= amount;
   users[recIdx].balanceFiat += amount;
+  
   const txId = `TX-${Math.random().toString(36).substr(2, 7).toUpperCase()}`;
   users[senderIdx].transactions.unshift({ id: txId, userId: senderId, type: TransactionType.TRANSFER_OUT, amountFiat: amount, timestamp: Date.now(), description: `Envio para ${users[recIdx].name}` });
   users[recIdx].transactions.unshift({ id: txId, userId: users[recIdx].id, type: TransactionType.TRANSFER_IN, amountFiat: amount, timestamp: Date.now(), description: `Recebido de ${users[senderIdx].name}` });
@@ -165,46 +175,84 @@ export const getCurrentUser = async (): Promise<User | null> => {
 };
 
 export const logout = async () => localStorage.removeItem(TBL_SESSION);
+
 export const startStaking = async (uId: string, amt: number, dur: number) => {
   const users = readDB<User[]>(TBL_USERS, []);
   const idx = users.findIndex(u => u.id === uId);
-  if (idx === -1 || users[idx].balanceCrypto < amt) throw new Error("Operação de Staking negada.");
+  if (idx === -1) throw new Error("Usuário não encontrado.");
+  if (amt <= 0) throw new Error("Quantidade inválida.");
+  if (users[idx].balanceCrypto < amt) throw new Error("Saldo MDC insuficiente.");
+  
+  const yieldRate = (STAKING_YIELD_RATES as any)[dur] || 0.05;
+  const reward = amt * yieldRate;
+
   users[idx].balanceCrypto -= amt;
-  users[idx].staking.push({ id: `STK-${Date.now()}`, amount: amt, startDate: Date.now(), durationHours: dur, potentialReward: amt * 0.12, active: true });
+  const stakeId = `STK-${Date.now()}`;
+  
+  users[idx].staking.push({ 
+    id: stakeId, 
+    amount: amt, 
+    startDate: Date.now(), 
+    durationHours: dur, 
+    potentialReward: reward, 
+    active: true 
+  });
+
+  users[idx].transactions.unshift({
+    id: `TX-STK-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+    userId: uId,
+    type: TransactionType.STAKE,
+    amountCrypto: amt,
+    timestamp: Date.now(),
+    description: `Staking iniciado: ${amt} MDC (${dur}h)`
+  });
+
   writeDB(TBL_USERS, users);
 };
+
 export const getAdminData = async () => ({ users: readDB<User[]>(TBL_USERS, []), audits: readDB<AuditLog[]>(TBL_AUDIT, []) });
 export const factoryResetSystem = () => { localStorage.clear(); initializeDB(); };
 export const generateSystemDump = () => JSON.stringify(readDB(TBL_USERS, []), null, 2);
+
 export const getPublicDirectory = async (excludeId?: string) => {
   const users = readDB<User[]>(TBL_USERS, []);
   return users.filter(u => u.id !== excludeId).map(u => ({
     id: u.id, name: u.name, email: u.email, kycVerified: u.kycStatus === KycStatus.VERIFIED, isOnline: true
   }));
 };
+
 export const submitKyc = async (uId: string, data: any) => {
   const users = readDB<User[]>(TBL_USERS, []);
   const idx = users.findIndex(u => u.id === uId);
-  if (idx !== -1) { users[idx].kycStatus = KycStatus.PENDING; writeDB(TBL_USERS, users); }
+  if (idx !== -1) { 
+    users[idx].kycStatus = KycStatus.PENDING; 
+    users[idx].kycData = data;
+    writeDB(TBL_USERS, users); 
+  }
 };
+
 export const getRankings = async () => {
   const users = readDB<User[]>(TBL_USERS, []);
   const bal = [...users].sort((a,b) => b.balanceCrypto - a.balanceCrypto).map((u, i) => ({ userId: u.id, displayName: u.name, value: u.balanceCrypto, position: i+1 }));
   return { balanceRanking: bal, volumeRanking: [] };
 };
+
 export const adminUpdateUser = async (aId: string, uId: string, up: any) => {
   const users = readDB<User[]>(TBL_USERS, []);
   const idx = users.findIndex(u => u.id === uId);
   if (idx !== -1) { users[idx] = { ...users[idx], ...up }; writeDB(TBL_USERS, users); }
 };
+
 export const adminAdjustBalance = async (aId: string, uId: string, f: number, c: number) => {
   const users = readDB<User[]>(TBL_USERS, []);
   const idx = users.findIndex(u => u.id === uId);
   if (idx !== -1) { users[idx].balanceFiat = f; users[idx].balanceCrypto = c; writeDB(TBL_USERS, users); }
 };
+
 export const adminApproveKyc = async (aId: string, uId: string) => {
   const users = readDB<User[]>(TBL_USERS, []);
   const idx = users.findIndex(u => u.id === uId);
   if (idx !== -1) { users[idx].kycStatus = KycStatus.VERIFIED; writeDB(TBL_USERS, users); }
 };
+
 export const adminCreateUser = async (aId: string, data: any) => registerUser(data.name, data.email, data.passwordHash);
