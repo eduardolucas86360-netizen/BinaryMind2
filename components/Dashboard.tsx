@@ -22,7 +22,6 @@ const Dashboard: React.FC<{ currentView: string, setView: (v: string) => void }>
   const [transferValue, setTransferValue] = useState('');
   const [transferLoading, setTransferLoading] = useState(false);
   const [directory, setDirectory] = useState<any[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const fetchDir = async () => {
@@ -43,7 +42,7 @@ const Dashboard: React.FC<{ currentView: string, setView: (v: string) => void }>
     setSuccess('');
     const val = parseFloat(tradeAmount);
     if (isNaN(val) || val <= 0) {
-      setError('Insira um valor válido');
+      setError('Quantidade inválida. Por favor, insira um valor numérico positivo.');
       return;
     }
     try {
@@ -51,7 +50,7 @@ const Dashboard: React.FC<{ currentView: string, setView: (v: string) => void }>
       else await sellCrypto(user.id, val, market.currentPrice);
       setTradeAmount('');
       refreshUser();
-      setSuccess('Ordem executada com sucesso.');
+      setSuccess('Ordem de mercado executada e registrada na rede.');
     } catch (err: any) { setError(err.message); }
   };
 
@@ -60,7 +59,7 @@ const Dashboard: React.FC<{ currentView: string, setView: (v: string) => void }>
     setTransferLoading(true);
     try {
       await transferFiat(user.id, transferEmail, parseFloat(transferValue));
-      alert("Sucesso!");
+      alert("Transferência enviada e validada pelos nós da rede.");
       setShowTransferModal(false);
       setTransferEmail('');
       setTransferValue('');
@@ -89,7 +88,7 @@ const Dashboard: React.FC<{ currentView: string, setView: (v: string) => void }>
                 <UserIcon size={28} />
               </div>
               <div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic">Prime Member</h2>
+                <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic">Membro Prime</h2>
                 <p className="text-zinc-500 text-xs font-mono uppercase tracking-widest">{user.name}</p>
               </div>
            </div>
@@ -99,7 +98,7 @@ const Dashboard: React.FC<{ currentView: string, setView: (v: string) => void }>
         </div>
 
         <div className="space-y-2">
-          <p className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.3em] mb-4">Total Assets Ledger</p>
+          <p className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.3em] mb-4">Total Patrimonial Ledger</p>
           <div className="flex items-baseline gap-3">
              <h1 className="text-6xl font-black text-white tracking-tighter">
                <MaskedValue value={user.balanceFiat} prefix={CURRENCY_SYMBOL} />
@@ -126,7 +125,7 @@ const Dashboard: React.FC<{ currentView: string, setView: (v: string) => void }>
                   </div>
                   <h3 className="font-black text-white uppercase tracking-widest text-xs">BinaryMind Coin (MDC)</h3>
                </div>
-               <span className="text-[10px] bg-dark-800 px-2 py-1 rounded-lg text-zinc-400 font-mono">FIXED RATE</span>
+               <span className="text-[10px] bg-dark-800 px-2 py-1 rounded-lg text-zinc-400 font-mono">TAXA FIXA</span>
             </div>
             <p className="text-3xl font-black text-white mb-2 tracking-tighter">
               <MaskedValue value={user.balanceCrypto} isCrypto />
@@ -221,7 +220,7 @@ const Dashboard: React.FC<{ currentView: string, setView: (v: string) => void }>
                    <input 
                     type="email" 
                     className="w-full bg-dark-950 border border-dark-800 rounded-2xl p-4 text-white font-bold outline-none focus:border-gold-500" 
-                    placeholder="exemplo@binary.com" 
+                    placeholder="nome@binarymind.com" 
                     value={transferEmail}
                     onChange={e => setTransferEmail(e.target.value)}
                     required
@@ -261,7 +260,7 @@ const Dashboard: React.FC<{ currentView: string, setView: (v: string) => void }>
                 <p className={`text-2xl font-black ${market.trend === 'BULLISH' ? 'text-green-500' : 'text-red-500'}`}>
                   {CURRENCY_SYMBOL} {market.currentPrice.toLocaleString()}
                 </p>
-                <p className="text-[10px] text-zinc-500 font-mono">PREÇO ATUAL</p>
+                <p className="text-[10px] text-zinc-500 font-mono">COTAÇÃO ATUAL</p>
               </div>
            </div>
            <MarketChart data={market.priceHistory} />
@@ -281,13 +280,13 @@ const Dashboard: React.FC<{ currentView: string, setView: (v: string) => void }>
                    />
                 </div>
                 <div className="bg-dark-950 p-4 rounded-2xl border border-dark-800">
-                   <p className="text-[10px] text-zinc-500 uppercase font-black mb-1">Cotação Estimada</p>
+                   <p className="text-[10px] text-zinc-500 uppercase font-black mb-1">Custo/Ganho Estimado</p>
                    <p className="text-xl font-mono font-black text-white">
                      {CURRENCY_SYMBOL} {(parseFloat(tradeAmount || '0') * market.currentPrice).toLocaleString()}
                    </p>
                 </div>
-                {error && <p className="text-xs text-red-500 font-bold">{error}</p>}
-                {success && <p className="text-xs text-green-500 font-bold">{success}</p>}
+                {error && <p className="text-xs text-red-500 font-bold bg-red-950/20 p-2 rounded border border-red-900/30">{error}</p>}
+                {success && <p className="text-xs text-green-500 font-bold bg-green-950/20 p-2 rounded border border-green-900/30">{success}</p>}
               </div>
            </div>
            
