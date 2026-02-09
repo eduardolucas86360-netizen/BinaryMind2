@@ -7,34 +7,51 @@ import StakingPanel from './Staking';
 import SettingsPanel from './Settings';
 import RankingPanel from './Ranking';
 import { 
-  TrendingUp, Eye, EyeOff, Send, QrCode, 
-  Barcode, User as UserIcon, X, Trophy, ArrowUpRight, ArrowDownRight, Zap, CreditCard, ChevronRight
+  Wallet, TrendingUp, History, Lock, AlertCircle, Eye, EyeOff, Send, QrCode, 
+  Barcode, ArrowRightLeft, User as UserIcon, X, Trophy, Search, CheckCircle, Loader2, ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
-import { buyCrypto, sellCrypto, transferFiat } from '../services/api';
+import { buyCrypto, sellCrypto, transferFiat, getPublicDirectory } from '../services/api';
 
 const Dashboard: React.FC<{ currentView: string, setView: (v: string) => void }> = ({ currentView, setView }) => {
   const { user, market, refreshUser, privacyMode, togglePrivacy } = useContext(AppContext);
   const [tradeAmount, setTradeAmount] = useState('');
-  const [hoveredPrice, setHoveredPrice] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferEmail, setTransferEmail] = useState('');
   const [transferValue, setTransferValue] = useState('');
   const [transferLoading, setTransferLoading] = useState(false);
+  const [directory, setDirectory] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    const fetchDir = async () => {
+      if (user) {
+        const dir = await getPublicDirectory(user.id);
+        setDirectory(dir);
+      }
+    };
+    fetchDir();
+    window.addEventListener('storage_update', fetchDir);
+    return () => window.removeEventListener('storage_update', fetchDir);
+  }, [user]);
 
   if (!user || !market) return null;
 
-  const currentDisplayPrice = hoveredPrice || market.currentPrice;
-
   const handleTrade = async (type: 'buy' | 'sell') => {
-    setError(''); setSuccess('');
+    setError('');
+    setSuccess('');
     const val = parseFloat(tradeAmount);
-    if (isNaN(val) || val <= 0) { setError('Valor inválido'); return; }
+    if (isNaN(val) || val <= 0) {
+      setError('Insira um valor válido');
+      return;
+    }
     try {
       if (type === 'buy') await buyCrypto(user.id, val, market.currentPrice);
       else await sellCrypto(user.id, val, market.currentPrice);
-      setTradeAmount(''); refreshUser(); setSuccess('Ordem concluída.');
+      setTradeAmount('');
+      refreshUser();
+      setSuccess('Ordem executada com sucesso.');
     } catch (err: any) { setError(err.message); }
   };
 
@@ -43,171 +60,188 @@ const Dashboard: React.FC<{ currentView: string, setView: (v: string) => void }>
     setTransferLoading(true);
     try {
       await transferFiat(user.id, transferEmail, parseFloat(transferValue));
-      setShowTransferModal(false); setTransferEmail(''); setTransferValue(''); refreshUser();
-      alert("Transferência enviada.");
+      alert("Sucesso!");
+      setShowTransferModal(false);
+      setTransferEmail('');
+      setTransferValue('');
+      refreshUser();
     } catch (err: any) { alert(err.message); }
     finally { setTransferLoading(false); }
   }
 
   const MaskedValue = ({ value, isCrypto = false, prefix = '' }: { value: number, isCrypto?: boolean, prefix?: string }) => {
-    if (privacyMode) return <span className="bg-zinc-800 text-transparent rounded px-2 select-none opacity-50">••••••</span>;
-    return <span className="font-mono">{prefix} {value.toLocaleString('pt-BR', { minimumFractionDigits: isCrypto ? 4 : 2 })}</span>;
+    if (privacyMode) return <span className="bg-dark-800 text-transparent rounded animate-pulse select-none">••••••</span>;
+    if (isCrypto) return <span className="font-mono">{value.toLocaleString('pt-BR', { minimumFractionDigits: 4 })}</span>;
+    return <span className="font-mono">{prefix} {value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>;
   };
 
   const Overview = () => (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-1000">
-      {/* Luxury Obsidian Card */}
-      <div className="relative group overflow-hidden bg-gradient-to-br from-zinc-900 via-black to-zinc-900 border border-zinc-800 p-10 rounded-[3rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.8)]">
-        <div className="absolute -top-24 -right-24 w-64 h-64 bg-gold-500/5 rounded-full blur-[100px] group-hover:bg-gold-500/10 transition-all duration-700"></div>
+    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* Premium Glass Header */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-dark-900 to-black border border-dark-800 p-8 rounded-[2rem] shadow-2xl">
+        <div className="absolute top-0 right-0 p-8 opacity-10">
+           <TrendingUp size={120} />
+        </div>
         
-        <div className="flex justify-between items-start relative z-10">
-          <div className="flex items-center gap-5">
-            <div className="w-16 h-16 rounded-[1.5rem] bg-gradient-to-br from-gold-500 to-amber-700 flex items-center justify-center text-black shadow-[0_10px_30px_-5px_rgba(245,158,11,0.5)]">
-              <Zap size={32} />
-            </div>
-            <div>
-              <p className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.4em] mb-1">Status da Conta</p>
-              <h2 className="text-2xl font-black text-white italic tracking-tighter">ELITE OBSIDIAN</h2>
-            </div>
-          </div>
-          <button onClick={togglePrivacy} className="w-12 h-12 flex items-center justify-center bg-zinc-800/30 hover:bg-zinc-800 rounded-2xl border border-zinc-700/50 transition-all">
-            {privacyMode ? <EyeOff size={20} className="text-gold-500" /> : <Eye size={20} className="text-zinc-400" />}
-          </button>
+        <div className="flex justify-between items-start mb-12">
+           <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-gold-500 flex items-center justify-center text-black shadow-[0_0_30px_-5px_rgba(245,158,11,0.4)]">
+                <UserIcon size={28} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic">Prime Member</h2>
+                <p className="text-zinc-500 text-xs font-mono uppercase tracking-widest">{user.name}</p>
+              </div>
+           </div>
+           <button onClick={togglePrivacy} className="p-3 bg-dark-800/50 hover:bg-dark-800 text-gold-500 rounded-2xl transition-all">
+             {privacyMode ? <EyeOff size={22} /> : <Eye size={22} />}
+           </button>
         </div>
 
-        <div className="mt-16 space-y-4 relative z-10">
-          <div className="flex flex-col">
-            <span className="text-[11px] text-zinc-500 font-black uppercase tracking-[0.3em] mb-3">Patrimônio Ledger Bruto</span>
-            <h1 className="text-7xl font-black text-white tracking-tighter transition-all duration-300">
-              <MaskedValue value={user.balanceFiat} prefix={CURRENCY_SYMBOL} />
-            </h1>
+        <div className="space-y-2">
+          <p className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.3em] mb-4">Total Assets Ledger</p>
+          <div className="flex items-baseline gap-3">
+             <h1 className="text-6xl font-black text-white tracking-tighter">
+               <MaskedValue value={user.balanceFiat} prefix={CURRENCY_SYMBOL} />
+             </h1>
           </div>
-          
-          <div className="flex items-center gap-6 pt-8 border-t border-zinc-800/50">
-            <div className="flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-full">
-              <ArrowUpRight size={14} className="text-green-500" />
-              <span className="text-[10px] font-black text-green-500 uppercase tracking-widest">+12.4% APR</span>
-            </div>
-            <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest opacity-60">Sincronizado com Central Core</p>
+          <div className="flex items-center gap-4 pt-6">
+             <div className="flex items-center gap-2 bg-green-500/10 text-green-500 px-3 py-1.5 rounded-xl border border-green-500/20 text-[10px] font-black">
+                <ArrowUpRight size={14} /> + 0.24% HOJE
+             </div>
+             <div className="text-zinc-500 text-[10px] font-mono uppercase tracking-widest">
+               Liquidez Imediata Ativa
+             </div>
           </div>
         </div>
       </div>
 
-      {/* Asset Grid */}
+      {/* Grid de Ativos Digitais */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-zinc-900/40 backdrop-blur-3xl border border-zinc-800 p-8 rounded-[2.5rem] hover:border-gold-500/40 transition-all duration-500">
-          <div className="flex justify-between items-center mb-10">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-gold-500/10 text-gold-500 flex items-center justify-center border border-gold-500/20">
-                <TrendingUp size={24} />
-              </div>
-              <div>
-                <h3 className="text-xs font-black text-white uppercase tracking-widest">Digital Asset (MDC)</h3>
-                <p className="text-[9px] text-zinc-600 font-mono">LIQUIDEZ ALTA</p>
-              </div>
+         <div className="bg-dark-900/50 backdrop-blur-md border border-dark-800 p-6 rounded-[1.5rem] hover:border-gold-500/30 transition-all group">
+            <div className="flex justify-between items-center mb-6">
+               <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gold-500/10 text-gold-500 flex items-center justify-center border border-gold-500/20 group-hover:scale-110 transition-transform">
+                    <TrendingUp size={20} />
+                  </div>
+                  <h3 className="font-black text-white uppercase tracking-widest text-xs">BinaryMind Coin (MDC)</h3>
+               </div>
+               <span className="text-[10px] bg-dark-800 px-2 py-1 rounded-lg text-zinc-400 font-mono">FIXED RATE</span>
             </div>
-          </div>
-          <div className="flex items-end justify-between">
-            <div>
-              <p className="text-4xl font-black text-white tracking-tighter mb-2">
-                <MaskedValue value={user.balanceCrypto} isCrypto />
-              </p>
-              <p className="text-[10px] text-zinc-500 font-mono uppercase">≈ {CURRENCY_SYMBOL} {(user.balanceCrypto * market.currentPrice).toLocaleString()}</p>
-            </div>
-            <ChevronRight className="text-zinc-800" size={32} />
-          </div>
-        </div>
+            <p className="text-3xl font-black text-white mb-2 tracking-tighter">
+              <MaskedValue value={user.balanceCrypto} isCrypto />
+            </p>
+            <p className="text-[10px] text-zinc-500 font-mono uppercase">Equivalente: {CURRENCY_SYMBOL} {(user.balanceCrypto * market.currentPrice).toLocaleString()}</p>
+         </div>
 
-        <div className="bg-zinc-900/40 backdrop-blur-3xl border border-zinc-800 p-8 rounded-[2.5rem] hover:border-blue-500/40 transition-all duration-500">
-          <div className="flex justify-between items-center mb-10">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
-                <CreditCard size={24} />
-              </div>
-              <div>
-                <h3 className="text-xs font-black text-white uppercase tracking-widest">Crédito Adicional</h3>
-                <p className="text-[9px] text-zinc-600 font-mono">MASTER BLACK</p>
-              </div>
+         <div className="bg-dark-900/50 backdrop-blur-md border border-dark-800 p-6 rounded-[1.5rem] hover:border-blue-500/30 transition-all group">
+            <div className="flex justify-between items-center mb-6">
+               <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20 group-hover:scale-110 transition-transform">
+                    <Barcode size={20} />
+                  </div>
+                  <h3 className="font-black text-white uppercase tracking-widest text-xs">Crédito Disponível</h3>
+               </div>
             </div>
-          </div>
-          <p className="text-4xl font-black text-white tracking-tighter mb-2">
-            <MaskedValue value={user.creditCard.limit} prefix={CURRENCY_SYMBOL} />
-          </p>
-          <div className="h-1.5 w-full bg-zinc-800 rounded-full mt-4 overflow-hidden">
-            <div className="h-full bg-blue-500 w-[15%]" />
-          </div>
-        </div>
+            <p className="text-3xl font-black text-white mb-2 tracking-tighter">
+              <MaskedValue value={user.creditCard.limit} prefix={CURRENCY_SYMBOL} />
+            </p>
+            <div className="w-full bg-dark-800 h-1 rounded-full overflow-hidden mt-4">
+               <div className="bg-blue-500 h-full w-[15%]" />
+            </div>
+         </div>
       </div>
 
-      {/* Quick Access */}
+      {/* Ações Rápidas */}
       <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-        {[
-          { icon: Send, label: 'Enviar', color: 'text-gold-500' },
-          { icon: QrCode, label: 'Pix', color: 'text-zinc-100' },
-          { icon: Trophy, label: 'Elite', color: 'text-blue-400' },
-          { icon: Zap, label: 'Trade', color: 'text-purple-400' },
-          { icon: Barcode, label: 'Boletos', color: 'text-zinc-500' }
-        ].map((btn, i) => (
-          <button key={i} onClick={() => {
-            if (btn.label === 'Enviar') setShowTransferModal(true);
-            else if (btn.label === 'Trade') setView('market');
-            else if (btn.label === 'Elite') setView('ranking');
-          }} className="flex flex-col items-center gap-4 min-w-[120px] p-8 bg-zinc-900/60 border border-zinc-800 rounded-[2rem] hover:bg-zinc-800 transition-all group active:scale-90">
-            <div className={`${btn.color} group-hover:scale-110 transition-transform`}>
-              <btn.icon size={32} />
-            </div>
-            <span className="text-[10px] font-black uppercase text-zinc-500 tracking-[0.2em]">{btn.label}</span>
-          </button>
-        ))}
+         {[
+           { icon: QrCode, label: 'Pix', color: 'text-gold-500' },
+           { icon: Send, label: 'Enviar', color: 'text-blue-400' },
+           { icon: Lock, label: 'Stake', color: 'text-purple-400' },
+           { icon: Trophy, label: 'Elite', color: 'text-zinc-100' },
+           { icon: TrendingUp, label: 'Trade', color: 'text-green-400' }
+         ].map((action, i) => (
+           <button 
+            key={i} 
+            onClick={() => {
+              if (action.label === 'Enviar') setShowTransferModal(true);
+              else if (action.label === 'Trade') setView('market');
+              else if (action.label === 'Stake') setView('staking');
+              else if (action.label === 'Elite') setView('ranking');
+            }}
+            className="flex flex-col items-center gap-3 min-w-[100px] p-6 bg-dark-900 border border-dark-800 rounded-3xl hover:bg-dark-800 hover:border-zinc-600 transition-all group active:scale-95"
+           >
+              <div className={`${action.color} group-hover:scale-125 transition-transform`}>
+                <action.icon size={28} />
+              </div>
+              <span className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">{action.label}</span>
+           </button>
+         ))}
       </div>
 
-      {/* Transactions */}
-      <div className="bg-zinc-900/40 border border-zinc-800 rounded-[3rem] p-10">
-        <div className="flex justify-between items-center mb-8">
-          <h3 className="text-xs font-black text-zinc-500 uppercase tracking-[0.4em]">Audit Trail Ledger</h3>
-          <button className="text-[10px] font-black text-gold-500 uppercase tracking-widest hover:underline">Ver Todos</button>
+      {/* Histórico Ledger */}
+      <div className="space-y-4">
+        <h3 className="text-xs font-black text-zinc-500 uppercase tracking-[0.3em] ml-2">Fluxo de Caixa Auditado</h3>
+        <div className="bg-dark-900 border border-dark-800 rounded-[2rem] overflow-hidden">
+          {user.transactions.length === 0 ? (
+            <div className="p-20 text-center text-zinc-700 italic text-sm">Nenhum evento registrado.</div>
+          ) : (
+            user.transactions.slice(0, 5).map(tx => (
+              <div key={tx.id} className="flex justify-between items-center p-6 border-b border-dark-800 last:border-0 hover:bg-dark-800/30 transition-colors">
+                 <div className="flex items-center gap-4">
+                    <div className={`p-3 rounded-2xl ${tx.amountFiat && tx.amountFiat > 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                       {tx.type.includes('IN') ? <ArrowUpRight size={20}/> : <ArrowDownRight size={20}/>}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-white">{tx.description}</p>
+                      <p className="text-[10px] text-zinc-500 font-mono">{new Date(tx.timestamp).toLocaleString()}</p>
+                    </div>
+                 </div>
+                 <div className="text-right">
+                   <p className={`font-mono text-sm font-black ${tx.type.includes('IN') ? 'text-green-500' : 'text-zinc-400'}`}>
+                     {tx.type.includes('IN') ? '+' : '-'} {CURRENCY_SYMBOL} {(tx.amountFiat || 0).toLocaleString()}
+                   </p>
+                   <p className="text-[9px] text-zinc-700 uppercase font-mono">{tx.id}</p>
+                 </div>
+              </div>
+            ))
+          )}
         </div>
-        <div className="space-y-4">
-          {user.transactions.slice(0, 4).map(tx => (
-            <div key={tx.id} className="flex justify-between items-center p-6 bg-black/20 rounded-3xl border border-zinc-800/30 hover:border-zinc-700 transition-all">
-              <div className="flex items-center gap-5">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${tx.type.includes('IN') ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                  {tx.type.includes('IN') ? <ArrowUpRight size={20}/> : <ArrowDownRight size={20}/>}
+      </div>
+
+      {/* Modal Transferencia */}
+      {showTransferModal && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[200] flex items-center justify-center p-6 animate-in fade-in duration-300">
+          <div className="bg-dark-900 border border-dark-800 w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl relative">
+             <button onClick={() => setShowTransferModal(false)} className="absolute top-8 right-8 text-zinc-500 hover:text-white transition-colors"><X size={28}/></button>
+             <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-8 italic">Transferência Global</h2>
+             <form onSubmit={handleTransfer} className="space-y-6">
+                <div>
+                   <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-2 block">Identificador de Rede</label>
+                   <input 
+                    type="email" 
+                    className="w-full bg-dark-950 border border-dark-800 rounded-2xl p-4 text-white font-bold outline-none focus:border-gold-500" 
+                    placeholder="exemplo@binary.com" 
+                    value={transferEmail}
+                    onChange={e => setTransferEmail(e.target.value)}
+                    required
+                   />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-white">{tx.description}</p>
-                  <p className="text-[10px] text-zinc-600 font-mono uppercase">{new Date(tx.timestamp).toLocaleString()}</p>
+                   <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-2 block">Montante (B$)</label>
+                   <input 
+                    type="number" 
+                    className="w-full bg-dark-950 border border-dark-800 rounded-2xl p-4 text-white font-mono text-3xl font-black outline-none focus:border-gold-500" 
+                    placeholder="0.00" 
+                    value={transferValue}
+                    onChange={e => setTransferValue(e.target.value)}
+                    required
+                   />
                 </div>
-              </div>
-              <div className="text-right">
-                <p className={`font-mono text-base font-black ${tx.type.includes('IN') ? 'text-green-500' : 'text-zinc-400'}`}>
-                  {tx.type.includes('IN') ? '+' : '-'} {CURRENCY_SYMBOL} {(tx.amountFiat || 0).toLocaleString()}
-                </p>
-                <p className="text-[8px] text-zinc-800 font-mono uppercase tracking-tighter">{tx.id}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {showTransferModal && (
-        <div className="fixed inset-0 bg-black/95 backdrop-blur-3xl z-[300] flex items-center justify-center p-6 animate-in fade-in zoom-in duration-300">
-          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-lg rounded-[3rem] p-12 relative shadow-2xl">
-            <button onClick={() => setShowTransferModal(false)} className="absolute top-10 right-10 text-zinc-600 hover:text-white"><X size={32}/></button>
-            <h2 className="text-3xl font-black text-white italic tracking-tighter mb-10">TRANSFERÊNCIA</h2>
-            <form onSubmit={handleTransfer} className="space-y-8">
-              <div className="space-y-3">
-                <label className="text-[11px] text-zinc-500 font-black uppercase tracking-widest">Chave de Identificação</label>
-                <input type="email" required className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-white font-bold outline-none focus:border-gold-500" placeholder="usuario@binary.com" value={transferEmail} onChange={e => setTransferEmail(e.target.value)}/>
-              </div>
-              <div className="space-y-3">
-                <label className="text-[11px] text-zinc-500 font-black uppercase tracking-widest">Quantia (B$)</label>
-                <input type="number" required className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-white font-mono text-4xl font-black outline-none focus:border-gold-500" placeholder="0.00" value={transferValue} onChange={e => setTransferValue(e.target.value)}/>
-              </div>
-              <button type="submit" disabled={transferLoading} className="w-full bg-gold-500 text-black font-black py-6 rounded-[1.5rem] hover:bg-gold-400 transition-all text-sm uppercase tracking-widest">
-                {transferLoading ? 'VALIDANDO BLOCO...' : 'ASSINAR TRANSAÇÃO'}
-              </button>
-            </form>
+                <button type="submit" disabled={transferLoading} className="w-full bg-gold-500 text-black font-black py-5 rounded-2xl hover:bg-gold-400 transition-all shadow-xl shadow-gold-500/10">
+                   {transferLoading ? 'VALIDANDO BLOCO...' : 'CONFIRMAR ENVIO'}
+                </button>
+             </form>
           </div>
         </div>
       )}
@@ -215,51 +249,52 @@ const Dashboard: React.FC<{ currentView: string, setView: (v: string) => void }>
   );
 
   const MarketView = () => (
-    <div className="space-y-10 animate-in fade-in duration-1000">
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        <div className="lg:col-span-3 bg-zinc-900/60 border border-zinc-800 p-10 rounded-[3.5rem] shadow-2xl">
-          <div className="flex justify-between items-end mb-12">
-            <div>
-              <p className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.4em] mb-2">Monitoramento de Fluxo</p>
-              <h3 className="text-3xl font-black text-white italic tracking-tighter">EXCHANGE HUB</h3>
-            </div>
-            <div className="text-right">
-              <div className="flex items-center gap-2 justify-end">
-                {market.trend === 'BULLISH' ? <ArrowUpRight className="text-green-500" /> : <ArrowDownRight className="text-red-500" />}
-                <p className={`text-4xl font-mono font-black ${market.trend === 'BULLISH' ? 'text-green-500' : 'text-red-500'} transition-all duration-300`}>
-                  {CURRENCY_SYMBOL} {currentDisplayPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </p>
+    <div className="space-y-10 animate-in fade-in duration-700">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 bg-dark-900 border border-dark-800 p-8 rounded-[2.5rem]">
+           <div className="flex justify-between items-center mb-8">
+              <div>
+                <h3 className="text-xl font-black text-white uppercase tracking-tighter italic">Exchange Hub</h3>
+                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-mono">Volume Real-Time: MDC/B$</p>
               </div>
-              <p className="text-[10px] text-zinc-600 font-mono uppercase tracking-widest">
-                {hoveredPrice ? 'VALOR NO PONTO SELECIONADO' : 'COTAÇÃO EM TEMPO REAL'}
-              </p>
-            </div>
-          </div>
-          <MarketChart data={market.priceHistory} onHoverPrice={setHoveredPrice} />
+              <div className="text-right">
+                <p className={`text-2xl font-black ${market.trend === 'BULLISH' ? 'text-green-500' : 'text-red-500'}`}>
+                  {CURRENCY_SYMBOL} {market.currentPrice.toLocaleString()}
+                </p>
+                <p className="text-[10px] text-zinc-500 font-mono">PREÇO ATUAL</p>
+              </div>
+           </div>
+           <MarketChart data={market.priceHistory} />
         </div>
 
-        <div className="bg-zinc-900/60 border border-zinc-800 p-10 rounded-[3.5rem] flex flex-col justify-between shadow-2xl">
-          <div className="space-y-10">
-            <h3 className="text-xl font-black text-white italic tracking-tighter">ORDEM DE MERCADO</h3>
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Quantidade MDC</label>
-                <input type="number" value={tradeAmount} onChange={e => setTradeAmount(e.target.value)} className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-white font-mono text-2xl font-bold outline-none focus:border-gold-500" />
+        <div className="bg-dark-900 border border-dark-800 p-8 rounded-[2.5rem] flex flex-col justify-between">
+           <div>
+              <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-8 italic">Terminal</h3>
+              <div className="space-y-6">
+                <div>
+                   <label className="text-[10px] text-zinc-500 font-black uppercase mb-2 block">Quantidade MDC</label>
+                   <input 
+                    type="number" 
+                    value={tradeAmount}
+                    onChange={e => setTradeAmount(e.target.value)}
+                    className="w-full bg-dark-950 border border-dark-800 rounded-2xl p-4 text-white font-mono text-2xl font-bold outline-none focus:border-gold-500"
+                   />
+                </div>
+                <div className="bg-dark-950 p-4 rounded-2xl border border-dark-800">
+                   <p className="text-[10px] text-zinc-500 uppercase font-black mb-1">Cotação Estimada</p>
+                   <p className="text-xl font-mono font-black text-white">
+                     {CURRENCY_SYMBOL} {(parseFloat(tradeAmount || '0') * market.currentPrice).toLocaleString()}
+                   </p>
+                </div>
+                {error && <p className="text-xs text-red-500 font-bold">{error}</p>}
+                {success && <p className="text-xs text-green-500 font-bold">{success}</p>}
               </div>
-              <div className="bg-black/40 p-5 rounded-2xl border border-zinc-800/50">
-                <p className="text-[9px] text-zinc-600 uppercase font-black mb-1">Custo Estimado</p>
-                <p className="text-2xl font-mono font-black text-white">
-                  {CURRENCY_SYMBOL} {(parseFloat(tradeAmount || '0') * market.currentPrice).toLocaleString()}
-                </p>
-              </div>
-              {error && <p className="text-xs text-red-500 font-bold bg-red-500/10 p-3 rounded-xl border border-red-500/20">{error}</p>}
-              {success && <p className="text-xs text-green-500 font-bold bg-green-500/10 p-3 rounded-xl border border-green-500/20">{success}</p>}
-            </div>
-          </div>
-          <div className="space-y-4 mt-10">
-            <button onClick={() => handleTrade('buy')} className="w-full bg-green-600 hover:bg-green-500 text-white font-black py-5 rounded-2xl transition-all uppercase text-xs tracking-[0.2em] shadow-lg shadow-green-600/10">COMPRAR</button>
-            <button onClick={() => handleTrade('sell')} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-5 rounded-2xl transition-all uppercase text-xs tracking-[0.2em] shadow-lg shadow-red-600/10">VENDER</button>
-          </div>
+           </div>
+           
+           <div className="grid grid-cols-2 gap-4 mt-8">
+              <button onClick={() => handleTrade('buy')} className="bg-green-600 hover:bg-green-500 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-green-600/10">COMPRAR</button>
+              <button onClick={() => handleTrade('sell')} className="bg-red-600 hover:bg-red-500 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-red-600/10">VENDER</button>
+           </div>
         </div>
       </div>
     </div>

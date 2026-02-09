@@ -7,29 +7,27 @@ import { CURRENCY_SYMBOL } from '../constants';
 
 interface MarketChartProps {
   data: { time: number; price: number }[];
-  onHoverPrice?: (price: number | null) => void;
 }
 
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-dark-950/90 backdrop-blur-2xl border border-gold-500/20 p-4 rounded-2xl shadow-2xl animate-in zoom-in duration-150">
-        <p className="text-[10px] text-zinc-500 uppercase font-black tracking-[0.2em] mb-2">Ponto de Auditoria</p>
-        <div className="flex flex-col gap-1">
-          <span className="text-2xl font-mono font-black text-white">
-            {CURRENCY_SYMBOL} {payload[0].value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          </span>
-          <span className="text-[10px] text-zinc-400 font-mono">
-            {new Date(payload[0].payload.time).toLocaleTimeString('pt-BR')}
-          </span>
-        </div>
+      <div className="bg-dark-900/90 backdrop-blur-xl border border-gold-500/30 p-3 rounded-xl shadow-2xl animate-in fade-in zoom-in duration-200">
+        <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-1">Registro Temporal</p>
+        <p className="text-sm font-bold text-white mb-1">
+          {new Date(payload[0].payload.time).toLocaleTimeString('pt-BR')}
+        </p>
+        <div className="h-px bg-dark-800 my-2"></div>
+        <p className="text-xl font-mono font-black text-gold-500">
+          {CURRENCY_SYMBOL} {payload[0].value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+        </p>
       </div>
     );
   }
   return null;
 };
 
-export const MarketChart: React.FC<MarketChartProps> = ({ data, onHoverPrice }) => {
+export const MarketChart: React.FC<MarketChartProps> = ({ data }) => {
   const formattedData = data.map(d => ({
     ...d,
     formattedTime: new Date(d.time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
@@ -39,62 +37,43 @@ export const MarketChart: React.FC<MarketChartProps> = ({ data, onHoverPrice }) 
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
 
-  const handleMouseMove = (state: any) => {
-    if (state.activePayload && onHoverPrice) {
-      onHoverPrice(state.activePayload[0].payload.price);
-    }
-  };
-
-  const handleMouseLeave = () => {
-    if (onHoverPrice) onHoverPrice(null);
-  };
-
   return (
-    <div className="w-full h-[400px] relative group">
+    <div className="w-full h-[350px] relative">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart 
-          data={formattedData} 
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-        >
+        <AreaChart data={formattedData}>
           <defs>
             <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.3}/>
-              <stop offset="100%" stopColor="#f59e0b" stopOpacity={0}/>
+              <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4}/>
+              <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="10 10" stroke="#18181b" vertical={false} />
+          <CartesianGrid strokeDasharray="5 5" stroke="#18181b" vertical={false} />
           <XAxis 
             dataKey="formattedTime" 
             stroke="#3f3f46" 
-            fontSize={9} 
+            fontSize={10} 
             tickLine={false}
             axisLine={false}
-            dy={15}
+            dy={10}
           />
           <YAxis 
-            domain={[minPrice * 0.95, maxPrice * 1.05]} 
+            domain={[minPrice * 0.98, maxPrice * 1.02]} 
             stroke="#3f3f46" 
-            fontSize={9} 
+            fontSize={10} 
             tickFormatter={(value) => `${CURRENCY_SYMBOL}${value.toFixed(0)}`}
             tickLine={false}
             axisLine={false}
             dx={-10}
           />
-          <Tooltip 
-            content={<CustomTooltip />} 
-            cursor={{ stroke: '#f59e0b', strokeWidth: 1.5, strokeDasharray: '4 4' }} 
-            isAnimationActive={false}
-          />
+          <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#f59e0b', strokeWidth: 1, strokeDasharray: '4 4' }} />
           <Area 
             type="monotone" 
             dataKey="price" 
             stroke="#f59e0b" 
-            strokeWidth={4}
+            strokeWidth={3}
             fillOpacity={1} 
             fill="url(#colorPrice)" 
-            animationDuration={800}
-            activeDot={{ r: 6, fill: '#f59e0b', stroke: '#000', strokeWidth: 2 }}
+            animationDuration={1500}
           />
         </AreaChart>
       </ResponsiveContainer>

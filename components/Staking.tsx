@@ -1,10 +1,9 @@
-
 import React, { useContext, useState } from 'react';
 import { AppContext } from '../App';
 import { startStaking } from '../services/api';
 import { KycStatus } from '../types';
-import { Lock, ShieldAlert, Timer, Sparkles } from 'lucide-react';
-import { CRYPTO_SYMBOL, STAKING_YIELD_RATES } from '../constants';
+import { Lock, ShieldAlert, Timer } from 'lucide-react';
+import { CRYPTO_SYMBOL } from '../constants';
 
 const StakingPanel: React.FC = () => {
   const { user, refreshUser } = useContext(AppContext);
@@ -18,20 +17,20 @@ const StakingPanel: React.FC = () => {
   const handleStake = async () => {
     setMsg({ type: '', text: '' });
     if (user.kycStatus !== KycStatus.VERIFIED) {
-      setMsg({ type: 'error', text: 'Protocolo KYC incompleto. Verificação mandatória.' });
+      setMsg({ type: 'error', text: 'Você deve completar o KYC para fazer staking.' });
       return;
     }
 
     const val = parseFloat(amount);
     if (isNaN(val) || val <= 0) {
-      setMsg({ type: 'error', text: 'Quantidade de ativos MDC inválida.' });
+      setMsg({ type: 'error', text: 'Quantidade inválida.' });
       return;
     }
 
     setLoading(true);
     try {
       await startStaking(user.id, val, period);
-      setMsg({ type: 'success', text: `Custódia estabelecida: ${val} ${CRYPTO_SYMBOL}` });
+      setMsg({ type: 'success', text: `Staking realizado: ${val} ${CRYPTO_SYMBOL}` });
       setAmount('');
       refreshUser();
     } catch (e: any) {
@@ -41,77 +40,71 @@ const StakingPanel: React.FC = () => {
     }
   };
 
-  const getRewardPercent = (hours: number) => {
-    const rate = (STAKING_YIELD_RATES as any)[hours] || 0;
-    return `${(rate * 100).toFixed(0)}%`;
+  const getRewardText = (hours: number) => {
+    if (hours === 24) return '5%'; 
+    if (hours === 72) return '8%';
+    if (hours === 168) return '16%';
+    return '0%';
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-12 animate-in fade-in duration-1000">
-      <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-gold-500/10 border border-gold-500/20 rounded-full text-gold-500 text-[10px] font-black uppercase tracking-widest mb-4">
-           <Sparkles size={14} /> Alto Rendimento Certificado
-        </div>
-        <h2 className="text-4xl font-black text-white italic tracking-tighter">OBSIDIAN YIELD STAKING</h2>
-        <p className="text-zinc-500 text-sm max-w-xl mx-auto">Imobilize seus ativos MDC na infraestrutura central para assegurar provisões de liquidez e recompensas exponenciais.</p>
+    <div className="max-w-4xl mx-auto space-y-8">
+      <div className="text-center space-y-2">
+        <h2 className="text-3xl font-bold text-white">Ganhe Renda Passiva</h2>
+        <p className="text-zinc-400">Trave suas {CRYPTO_SYMBOL} para ganhar recompensas de alto rendimento.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Create Stake Form */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] p-10 shadow-2xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-            <Lock size={120} />
-          </div>
-          
-          <h3 className="text-xl font-black text-white uppercase tracking-tighter italic mb-8 flex items-center gap-3">
-            <Lock className="text-gold-500" /> ALOCAR ATIVOS
+        <div className="bg-dark-900 border border-dark-800 rounded-2xl p-6">
+          <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <Lock className="text-gold-500" /> Novo Staking
           </h3>
           
           {user.kycStatus !== KycStatus.VERIFIED && (
-            <div className="bg-red-500/10 border border-red-500/20 p-5 rounded-2xl flex items-center gap-4 text-red-500 text-xs font-bold mb-8">
-              <ShieldAlert size={24} /> 
-              <span>Verificação de Conformidade KYC Mandatória para operações de Staking.</span>
+            <div className="bg-red-900/20 border border-red-800 p-3 rounded-lg flex items-center gap-3 text-red-200 text-sm mb-4">
+              <ShieldAlert /> Verificação KYC Necessária
             </div>
           )}
 
-          <div className="space-y-8">
-            <div className="space-y-3">
-              <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Montante para Bloqueio</label>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm text-zinc-400">Quantidade para travar</label>
               <div className="relative">
                  <input 
                   type="number" 
                   value={amount}
                   onChange={e => setAmount(e.target.value)}
-                  className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-white font-mono text-3xl font-black focus:border-gold-500 outline-none transition-all"
+                  className="w-full bg-dark-950 border border-dark-800 rounded-lg p-3 text-white mt-1 font-mono focus:border-gold-500 outline-none"
                   placeholder="0.00"
                   disabled={loading}
                  />
-                 <span className="absolute right-5 top-7 text-zinc-600 font-mono font-bold">{CRYPTO_SYMBOL}</span>
+                 <span className="absolute right-3 top-4 text-zinc-500 text-sm">{CRYPTO_SYMBOL}</span>
               </div>
             </div>
 
-            <div className="space-y-3">
-              <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Maturação Temporal</label>
-              <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-sm text-zinc-400">Duração do Bloqueio</label>
+              <div className="grid grid-cols-3 gap-2 mt-1">
                 {[24, 72, 168].map(h => (
                   <button
                     key={h}
                     onClick={() => setPeriod(h)}
-                    className={`py-4 rounded-2xl border flex flex-col items-center gap-1 transition-all duration-300 ${
+                    className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
                       period === h 
-                      ? 'bg-gold-500 text-black border-gold-500 shadow-lg shadow-gold-500/20 scale-105' 
-                      : 'bg-black border-zinc-800 text-zinc-500 hover:border-zinc-600'
+                      ? 'bg-gold-500 text-black border-gold-500' 
+                      : 'bg-dark-950 border-dark-800 text-zinc-400 hover:border-zinc-600'
                     }`}
                   >
-                    <span className="text-xs font-black uppercase">{h < 48 ? '24h' : h < 100 ? '3 Dias' : '7 Dias'}</span>
-                    <span className={`text-[10px] font-mono ${period === h ? 'text-black/70' : 'text-gold-500/70'}`}>+{getRewardPercent(h)}</span>
+                    {h < 48 ? '24 Horas' : h < 100 ? '3 Dias' : '7 Dias'}
+                    <div className="text-[10px] opacity-70">Rendimento {getRewardText(h)}</div>
                   </button>
                 ))}
               </div>
             </div>
 
             {msg.text && (
-              <div className={`text-xs font-bold p-4 rounded-2xl animate-in fade-in zoom-in ${msg.type === 'error' ? 'text-red-500 bg-red-500/10 border border-red-500/20' : 'text-green-500 bg-green-500/10 border border-green-500/20'}`}>
+              <div className={`text-sm p-2 rounded ${msg.type === 'error' ? 'text-red-400 bg-red-900/10' : 'text-green-400 bg-green-900/10'}`}>
                 {msg.text}
               </div>
             )}
@@ -119,43 +112,37 @@ const StakingPanel: React.FC = () => {
             <button 
               onClick={handleStake}
               disabled={loading || user.kycStatus !== KycStatus.VERIFIED}
-              className="w-full bg-gold-500 text-black font-black py-6 rounded-2xl hover:bg-gold-400 disabled:opacity-20 disabled:cursor-not-allowed transition-all shadow-xl shadow-gold-500/10 text-sm uppercase tracking-widest active:scale-95"
+              className="w-full bg-gold-500 text-black font-bold py-3 rounded-xl hover:bg-gold-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? 'AUTENTICANDO BLOCO...' : 'ASSINAR CONTRATO DE CUSTÓDIA'}
+              {loading ? 'Processando...' : 'Confirmar Staking'}
             </button>
           </div>
         </div>
 
         {/* Active Stakes */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] p-10 shadow-2xl">
-          <h3 className="text-xl font-black text-white uppercase tracking-tighter italic mb-8 flex items-center gap-3">
-            <Timer className="text-gold-500" /> POSIÇÕES VIGENTES
+        <div className="bg-dark-900 border border-dark-800 rounded-2xl p-6">
+          <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <Timer className="text-gold-500" /> Posições Ativas
           </h3>
-          <div className="space-y-4 max-h-[500px] overflow-y-auto pr-4 scrollbar-hide">
+          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
             {user.staking.filter(s => s.active).length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center opacity-30 grayscale">
-                <Lock size={48} className="mb-4" />
-                <p className="text-zinc-500 text-xs font-black uppercase tracking-widest">Nenhuma alocação detectada</p>
-              </div>
+              <p className="text-zinc-500 text-sm text-center py-8">Nenhuma posição ativa.</p>
             ) : (
               user.staking.filter(s => s.active).map(s => (
-                <div key={s.id} className="bg-black border border-zinc-800 p-6 rounded-[2rem] hover:border-zinc-700 transition-all">
-                  <div className="flex justify-between items-start mb-4">
-                     <div>
-                        <p className="text-[9px] text-zinc-600 font-mono uppercase mb-1">IDENTIFICADOR: {s.id.slice(-6)}</p>
-                        <p className="text-2xl font-mono font-black text-gold-500 tracking-tighter">{s.amount.toLocaleString()} {CRYPTO_SYMBOL}</p>
-                     </div>
-                     <span className="text-[10px] font-black text-zinc-400 bg-zinc-900 px-3 py-1.5 rounded-full border border-zinc-800 uppercase tracking-widest">
-                       {s.durationHours}H TERM
+                <div key={s.id} className="bg-dark-950 border border-dark-800 rounded-xl p-4">
+                  <div className="flex justify-between items-start mb-2">
+                     <span className="text-gold-500 font-mono font-bold">{s.amount} {CRYPTO_SYMBOL}</span>
+                     <span className="text-xs text-zinc-500 bg-dark-800 px-2 py-1 rounded">
+                       Travado por {s.durationHours}h
                      </span>
                   </div>
-                  <div className="flex justify-between text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-4">
-                    <span>Yield: +{s.potentialReward.toFixed(3)}</span>
-                    <span>Finalização: {new Date(s.startDate + s.durationHours * 3600000).toLocaleDateString()}</span>
+                  <div className="flex justify-between text-xs text-zinc-400">
+                    <span>Recompensa: +{s.potentialReward.toFixed(3)}</span>
+                    <span>Termina em: {new Date(s.startDate + s.durationHours * 3600000).toLocaleString('pt-BR')}</span>
                   </div>
-                  <div className="w-full bg-zinc-900 h-2 rounded-full overflow-hidden">
+                  <div className="w-full bg-dark-800 h-1.5 rounded-full mt-3 overflow-hidden">
                     <div 
-                      className="bg-gradient-to-r from-gold-600 to-gold-400 h-full transition-all duration-1000" 
+                      className="bg-gold-500 h-full transition-all duration-1000" 
                       style={{ width: `${Math.min(100, ((Date.now() - s.startDate) / (s.durationHours * 3600000)) * 100)}%` }}
                     />
                   </div>
