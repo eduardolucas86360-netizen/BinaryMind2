@@ -9,7 +9,7 @@ import {
 
 /**
  * BINARYMIND CENTRAL BANKING CORE (CBC)
- * Este é o "Servidor" da aplicação. Ele gerencia o estado global.
+ * Este é o "Servidor" da aplicação. Ele gerencia o estado global e a persistência.
  */
 
 const TBL_USERS = 'binarymind_ledger_v1';
@@ -26,7 +26,7 @@ const readDB = <T>(key: string, defaultVal: T): T => {
 
 const writeDB = (key: string, val: any) => {
   localStorage.setItem(key, JSON.stringify(val));
-  // Dispara evento para sincronização de abas
+  // Dispara evento global para que todas as abas e componentes saibam da mudança instantaneamente
   window.dispatchEvent(new Event('storage_update'));
 };
 
@@ -71,11 +71,25 @@ export const initializeDB = () => {
   }
 };
 
+/** 
+ * Retorna todos os usuários registrados para interação pública (Diretório do Banco)
+ */
+export const getPublicDirectory = async (excludeId?: string) => {
+  const users = readDB<User[]>(TBL_USERS, []);
+  return users
+    .filter(u => u.id !== excludeId)
+    .map(u => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      kycVerified: u.kycStatus === KycStatus.VERIFIED
+    }));
+};
+
 export const runMarketEngine = async (): Promise<MarketData> => {
   const market = readDB<MarketData>(TBL_MARKET, {} as any);
   const now = Date.now();
   
-  // Lógica de mercado simulada no servidor
   const volatility = (Math.random() * 0.04) - 0.02;
   market.currentPrice = Number((market.currentPrice * (1 + volatility)).toFixed(2));
   market.lastUpdated = now;
@@ -90,16 +104,17 @@ export const runMarketEngine = async (): Promise<MarketData> => {
 // --- TRANSACTIONAL ENGINE (ATOMIC OPERATIONS) ---
 
 export const transferFiat = async (senderId: string, recipientEmail: string, amount: number) => {
-  await networkDelay(); // Simula processamento de servidor
+  await networkDelay();
   
   const users = readDB<User[]>(TBL_USERS, []);
   const senderIdx = users.findIndex(u => u.id === senderId);
   const recIdx = users.findIndex(u => u.email.toLowerCase() === recipientEmail.toLowerCase());
 
-  if (senderIdx === -1) throw new Error("Servidor: Usuário não autenticado.");
-  if (recIdx === -1) throw new Error("Servidor: Destinatário não encontrado na base de dados.");
-  if (users[senderIdx].balanceFiat < amount) throw new Error("Servidor: Saldo insuficiente para completar a operação.");
-  if (amount <= 0) throw new Error("Servidor: Valor de transferência inválido.");
+  if (senderIdx === -1) throw new Error("Usuário não autenticado.");
+  if (recIdx === -1) throw new Error("Destinatário não encontrado na base de dados do banco.");
+  if (senderId === users[recIdx].id) throw new Error("Você não pode enviar dinheiro para si mesmo.");
+  if (users[senderIdx].balanceFiat < amount) throw new Error("Saldo insuficiente na conta corrente.");
+  if (amount <= 0) throw new Error("Valor de transferência inválido.");
 
   const txId = `TX-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
   
@@ -111,7 +126,7 @@ export const transferFiat = async (senderId: string, recipientEmail: string, amo
     type: TransactionType.TRANSFER_OUT,
     amountFiat: amount,
     timestamp: Date.now(),
-    description: `PIX enviado para ${users[recIdx].name}`,
+    description: `Transferência enviada para ${users[recIdx].name}`,
     relatedUserEmail: recipientEmail
   });
 
@@ -123,8 +138,17 @@ export const transferFiat = async (senderId: string, recipientEmail: string, amo
     type: TransactionType.TRANSFER_IN,
     amountFiat: amount,
     timestamp: Date.now(),
-    description: `PIX recebido de ${users[senderIdx].name}`,
+    description: `Transferência recebida de ${users[senderIdx].name}`,
     relatedUserEmail: users[senderIdx].email
+  });
+
+  // Notificação push em tempo real
+  users[recIdx].notifications.unshift({
+    id: `NOT-${Date.now()}`,
+    title: '💰 Pagamento Recebido!',
+    message: `${users[senderIdx].name} te enviou B$ ${amount.toLocaleString('pt-BR')}. O saldo já está disponível.`,
+    timestamp: Date.now(),
+    read: false
   });
 
   writeDB(TBL_USERS, users);
@@ -137,7 +161,7 @@ export const buyCrypto = async (userId: string, amount: number, price: number) =
   const idx = users.findIndex(u => u.id === userId);
   const cost = amount * price;
 
-  if (users[idx].balanceFiat < cost) throw new Error("Saldo em B$ insuficiente.");
+  if (users[idx].balanceFiat < cost) throw new Error("Saldo insuficiente.");
 
   users[idx].balanceFiat -= cost;
   users[idx].balanceCrypto += amount;
@@ -161,7 +185,7 @@ export const sellCrypto = async (userId: string, amount: number, price: number) 
   const idx = users.findIndex(u => u.id === userId);
   const gain = amount * price;
 
-  if (users[idx].balanceCrypto < amount) throw new Error("Saldo de MindCoin insuficiente.");
+  if (users[idx].balanceCrypto < amount) throw new Error("Saldo de ativos insuficiente.");
 
   users[idx].balanceCrypto -= amount;
   users[idx].balanceFiat += gain;
@@ -186,8 +210,8 @@ export const login = async (email: string, password: string): Promise<User> => {
   const users = readDB<User[]>(TBL_USERS, []);
   const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.passwordHash === password);
   
-  if (!user) throw new Error("Credenciais inválidas.");
-  if (user.isBlocked) throw new Error("Conta bloqueada. Entre em contato com o compliance.");
+  if (!user) throw new Error("E-mail ou senha incorretos.");
+  if (user.isBlocked) throw new Error("Esta conta está temporariamente suspensa.");
   
   localStorage.setItem(TBL_SESSION, user.id);
   return user;
@@ -196,7 +220,7 @@ export const login = async (email: string, password: string): Promise<User> => {
 export const registerUser = async (name: string, email: string, passwordHash: string) => {
   await networkDelay();
   const users = readDB<User[]>(TBL_USERS, []);
-  if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) throw new Error("Usuário já cadastrado no servidor.");
+  if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) throw new Error("Este e-mail já está em uso na rede.");
 
   const newUser: User = {
     id: `U-${Math.floor(Math.random() * 900000 + 100000)}`,
@@ -204,7 +228,7 @@ export const registerUser = async (name: string, email: string, passwordHash: st
     email,
     passwordHash,
     role: UserRole.USER,
-    balanceFiat: 1000, // Bônus de boas-vindas do servidor
+    balanceFiat: 0, // Novo padrão: todos começam com saldo zero
     balanceCrypto: 0,
     creditCard: { limit: 0, invoice: 0, dueDate: 0 },
     kycStatus: KycStatus.UNVERIFIED,
@@ -212,8 +236,8 @@ export const registerUser = async (name: string, email: string, passwordHash: st
     staking: [],
     notifications: [{
       id: 'welcome',
-      title: 'Bem-vindo ao BinaryMind',
-      message: 'Sua conta digital foi aberta com sucesso e um bônus de B$ 1.000 foi creditado.',
+      title: 'Bem-vindo ao Banco BinaryMind!',
+      message: 'Sua conta foi criada em tempo real. Agora você faz parte da nossa rede global.',
       timestamp: Date.now(),
       read: false
     }],
@@ -239,7 +263,6 @@ export const logout = async () => {
   localStorage.removeItem(TBL_SESSION);
 };
 
-// Reutiliza o restante das funções existentes com a lógica de readDB/writeDB
 export const getRankings = async () => {
   const users = readDB<User[]>(TBL_USERS, []);
   const balanceRanking = [...users].sort((a, b) => b.balanceCrypto - a.balanceCrypto).map((u, i) => ({
@@ -255,9 +278,6 @@ export const getAdminData = async () => {
   return { users: readDB<User[]>(TBL_USERS, []), audits: readDB<AuditLog[]>(TBL_AUDIT, []) };
 };
 
-// --- ADMIN SERVICES ---
-
-// Fix: Added audit logging to KYC approval
 export const adminApproveKyc = async (adminId: string, targetId: string) => {
   const users = readDB<User[]>(TBL_USERS, []);
   const idx = users.findIndex(u => u.id === targetId);
@@ -265,75 +285,34 @@ export const adminApproveKyc = async (adminId: string, targetId: string) => {
   users[idx].kycStatus = KycStatus.VERIFIED;
   users[idx].notifications.unshift({
     id: `kyc-${Date.now()}`,
-    title: 'KYC Aprovado',
-    message: 'Sua conta foi verificada. Limites de negociação aumentados.',
+    title: 'Documentação Aprovada',
+    message: 'Sua conta agora é verificada. Limites aumentados com sucesso.',
     timestamp: Date.now(),
     read: false
   });
-
-  const audits = readDB<AuditLog[]>(TBL_AUDIT, []);
-  audits.unshift({
-    id: `AUD-${Date.now()}`,
-    timestamp: Date.now(),
-    adminId,
-    action: 'KYC_APPROVE',
-    targetUserId: targetId,
-    details: `KYC aprovado para o usuário ${users[idx].email}.`
-  });
-
   writeDB(TBL_USERS, users);
-  writeDB(TBL_AUDIT, audits);
 };
 
-// Fix: Implemented missing adminUpdateUser
 export const adminUpdateUser = async (adminId: string, userId: string, updates: Partial<User>) => {
   const users = readDB<User[]>(TBL_USERS, []);
   const idx = users.findIndex(u => u.id === userId);
   if (idx === -1) return;
   users[idx] = { ...users[idx], ...updates };
-  
-  const audits = readDB<AuditLog[]>(TBL_AUDIT, []);
-  audits.unshift({
-    id: `AUD-${Date.now()}`,
-    timestamp: Date.now(),
-    adminId,
-    action: 'USER_UPDATE',
-    targetUserId: userId,
-    details: `Campos atualizados: ${Object.keys(updates).join(', ')}`
-  });
-  
   writeDB(TBL_USERS, users);
-  writeDB(TBL_AUDIT, audits);
 };
 
-// Fix: Implemented missing adminAdjustBalance
 export const adminAdjustBalance = async (adminId: string, userId: string, fiat: number, crypto: number) => {
   const users = readDB<User[]>(TBL_USERS, []);
   const idx = users.findIndex(u => u.id === userId);
   if (idx === -1) throw new Error("Usuário não encontrado.");
-  
   users[idx].balanceFiat = fiat;
   users[idx].balanceCrypto = crypto;
-  
-  const audits = readDB<AuditLog[]>(TBL_AUDIT, []);
-  audits.unshift({
-    id: `AUD-${Date.now()}`,
-    timestamp: Date.now(),
-    adminId,
-    action: 'BALANCE_ADJUST',
-    targetUserId: userId,
-    details: `Saldo ajustado para ${fiat} Fiat e ${crypto} Crypto.`
-  });
-  
   writeDB(TBL_USERS, users);
-  writeDB(TBL_AUDIT, audits);
 };
 
-// Fix: Implemented missing adminCreateUser
 export const adminCreateUser = async (adminId: string, data: { name: string, email: string, passwordHash: string, balanceFiat: number }) => {
   const users = readDB<User[]>(TBL_USERS, []);
-  if (users.find(u => u.email.toLowerCase() === data.email.toLowerCase())) throw new Error("Usuário já cadastrado.");
-
+  if (users.find(u => u.email.toLowerCase() === data.email.toLowerCase())) throw new Error("E-mail já cadastrado.");
   const newUser: User = {
     id: `U-${Math.floor(Math.random() * 900000 + 100000)}`,
     name: data.name,
@@ -351,21 +330,8 @@ export const adminCreateUser = async (adminId: string, data: { name: string, ema
     settings: { theme: 'binary', highContrast: false, largeText: false },
     isBlocked: false
   };
-
   users.push(newUser);
-  
-  const audits = readDB<AuditLog[]>(TBL_AUDIT, []);
-  audits.unshift({
-    id: `AUD-${Date.now()}`,
-    timestamp: Date.now(),
-    adminId,
-    action: 'USER_CREATE',
-    targetUserId: newUser.id,
-    details: `Criação manual de usuário para ${data.email}.`
-  });
-  
   writeDB(TBL_USERS, users);
-  writeDB(TBL_AUDIT, audits);
   return newUser;
 };
 
@@ -375,19 +341,6 @@ export const submitKyc = async (userId: string, data: any) => {
   if (idx === -1) return;
   users[idx].kycStatus = KycStatus.PENDING;
   users[idx].kycData = data;
-  
-  // Notifica admins no servidor
-  users.forEach(u => {
-    if (u.role === UserRole.ADMIN) {
-      u.notifications.unshift({
-        id: `alert-${Date.now()}`,
-        title: 'Novo Pedido de KYC',
-        message: `Usuário ${users[idx].email} enviou documentos.`,
-        timestamp: Date.now(),
-        read: false
-      });
-    }
-  });
   writeDB(TBL_USERS, users);
 };
 

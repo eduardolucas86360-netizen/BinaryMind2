@@ -16,4 +16,4 @@ export const STAKING_YIELD_RATES = {
   168: 0.16 // Long-term governance staking
 };
 
-export const NETWORK_LATENCY_MS = 400; // Latência artificial de rede para UX realista
+export const NETWORK_LATENCY_MS = 100; // Latência reduzida para agilidade em tempo real
