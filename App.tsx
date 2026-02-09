@@ -10,9 +10,9 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import AdminPanel from './components/AdminPanel';
 import Layout from './components/Layout';
+import AIAdvisor from './components/AIAdvisor';
 import { Loader2 } from 'lucide-react';
 
-// --- Contexts ---
 interface AppContextType {
   user: User | null;
   market: MarketData | null;
@@ -32,7 +32,6 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<string>('dashboard');
   const [privacyMode, setPrivacyMode] = useState(false);
 
-  // Initialize Server-Client Bridge
   useEffect(() => {
     initializeDB();
     initializeBankingCore();
@@ -47,16 +46,14 @@ const App: React.FC = () => {
 
     syncWithServer();
 
-    // ESCUTA DE EVENTO DO SERVIDOR (Cross-tab and Internal API)
     const handleUpdate = () => {
       getCurrentUser().then(setUser);
       runMarketEngine().then(setMarket);
     };
 
-    window.addEventListener('storage', handleUpdate); // Evento nativo para outras abas
-    window.addEventListener('storage_update', handleUpdate); // Evento customizado para a mesma aba
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener('storage_update', handleUpdate);
 
-    // Polling de redundância (15s)
     const interval = setInterval(handleUpdate, 15000);
 
     return () => {
@@ -88,29 +85,33 @@ const App: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-dark-950 flex flex-col items-center justify-center text-gold-500 gap-4">
-        <Loader2 className="animate-spin h-10 w-10" />
-        <span className="text-sm font-mono tracking-widest uppercase">Conectando ao Central Banking Core...</span>
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center text-gold-500 gap-6">
+        <div className="relative">
+          <Loader2 className="animate-spin h-12 w-12" />
+          <div className="absolute inset-0 bg-gold-500/20 blur-xl animate-pulse rounded-full"></div>
+        </div>
+        <span className="text-[10px] font-black tracking-[0.4em] uppercase opacity-60">Sincronizando com Obsidian Central Core...</span>
       </div>
     );
   }
 
-  const themeClass = user?.settings.theme === 'light' ? 'light-mode' : '';
   const contrastClass = user?.settings.highContrast ? 'high-contrast' : '';
   const textClass = user?.settings.largeText ? 'large-text' : '';
 
+  const renderView = () => {
+    if (user?.role === UserRole.ADMIN && currentView === 'admin') return <AdminPanel />;
+    if (currentView === 'ai_advisor') return <AIAdvisor />;
+    return <Dashboard currentView={currentView} setView={setCurrentView} />;
+  }
+
   return (
     <AppContext.Provider value={{ user, market, privacyMode, togglePrivacy, refreshUser, refreshMarket, setUser }}>
-      <div className={`${themeClass} ${contrastClass} ${textClass} min-h-screen text-gray-100 font-sans selection:bg-gold-500 selection:text-black`}>
+      <div className={`${contrastClass} ${textClass} min-h-screen text-zinc-100 font-sans selection:bg-gold-500 selection:text-black`}>
         {!user ? (
           <Login />
         ) : (
           <Layout onLogout={handleLogout} currentView={currentView} setView={setCurrentView}>
-            {user.role === UserRole.ADMIN && currentView === 'admin' ? (
-               <AdminPanel />
-            ) : (
-              <Dashboard currentView={currentView} setView={setCurrentView} />
-            )}
+            {renderView()}
           </Layout>
         )}
       </div>
