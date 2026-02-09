@@ -12,14 +12,13 @@ interface MarketChartProps {
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-dark-900/90 backdrop-blur-xl border border-gold-500/30 p-3 rounded-xl shadow-2xl animate-in fade-in zoom-in duration-200">
-        <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-1">Registro Temporal</p>
-        <p className="text-sm font-bold text-white mb-1">
-          {new Date(payload[0].payload.time).toLocaleTimeString('pt-BR')}
-        </p>
-        <div className="h-px bg-dark-800 my-2"></div>
-        <p className="text-xl font-mono font-black text-gold-500">
+      <div className="bg-[#1c1c1c] border border-nuPurple/30 p-3 rounded-2xl shadow-xl">
+        <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Cotação</p>
+        <p className="text-sm font-black text-white">
           {CURRENCY_SYMBOL} {payload[0].value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+        </p>
+        <p className="text-[9px] text-gray-500 font-mono">
+          {new Date(payload[0].payload.time).toLocaleTimeString('pt-BR')}
         </p>
       </div>
     );
@@ -38,42 +37,25 @@ export const MarketChart: React.FC<MarketChartProps> = ({ data }) => {
   const maxPrice = Math.max(...prices);
 
   return (
-    <div className="w-full h-[350px] relative">
+    <div className="w-full h-[220px] mt-4">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={formattedData}>
           <defs>
-            <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4}/>
-              <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+            <linearGradient id="colorNu" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#820ad1" stopOpacity={0.3}/>
+              <stop offset="95%" stopColor="#820ad1" stopOpacity={0}/>
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="5 5" stroke="#18181b" vertical={false} />
-          <XAxis 
-            dataKey="formattedTime" 
-            stroke="#3f3f46" 
-            fontSize={10} 
-            tickLine={false}
-            axisLine={false}
-            dy={10}
-          />
-          <YAxis 
-            domain={[minPrice * 0.98, maxPrice * 1.02]} 
-            stroke="#3f3f46" 
-            fontSize={10} 
-            tickFormatter={(value) => `${CURRENCY_SYMBOL}${value.toFixed(0)}`}
-            tickLine={false}
-            axisLine={false}
-            dx={-10}
-          />
-          <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#f59e0b', strokeWidth: 1, strokeDasharray: '4 4' }} />
+          <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#820ad1', strokeWidth: 1, strokeDasharray: '4 4' }} />
           <Area 
             type="monotone" 
             dataKey="price" 
-            stroke="#f59e0b" 
+            stroke="#820ad1" 
             strokeWidth={3}
             fillOpacity={1} 
-            fill="url(#colorPrice)" 
-            animationDuration={1500}
+            fill="url(#colorNu)" 
+            animationDuration={1000}
+            activeDot={{ r: 6, fill: '#820ad1', stroke: '#000', strokeWidth: 2 }}
           />
         </AreaChart>
       </ResponsiveContainer>

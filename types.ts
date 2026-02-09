@@ -46,7 +46,7 @@ export interface StakingPosition {
   id: string;
   amount: number;
   startDate: number;
-  durationHours: number; // 24, 72, 168 (7 days)
+  durationHours: number;
   potentialReward: number;
   active: boolean;
 }
@@ -55,15 +55,10 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  passwordHash: string; // Encrypted storage in production
+  passwordHash: string;
   role: UserRole;
   balanceFiat: number;
   balanceCrypto: number;
-  creditCard: {
-    limit: number;
-    invoice: number;
-    dueDate: number;
-  };
   kycStatus: KycStatus;
   kycData?: {
     fullName: string;

@@ -32,7 +32,6 @@ const AdminPanel: React.FC = () => {
   useEffect(() => {
     if (isAuthenticated) {
       loadData();
-      // ESCUTA EM TEMPO REAL: Qualquer mudança no banco reflete aqui na hora
       window.addEventListener('storage_update', loadData);
       window.addEventListener('storage', loadData); 
       return () => {
@@ -51,11 +50,13 @@ const AdminPanel: React.FC = () => {
   const toggleBlockUser = async (u: User) => {
     if (!user) return;
     await adminUpdateUser(user.id, u.id, { isBlocked: !u.isBlocked });
+    loadData();
   };
 
   const handleApproveKyc = async (targetId: string) => {
     if (!user) return;
     await adminApproveKyc(user.id, targetId);
+    loadData();
   };
 
   const handleSaveBalance = async (e: React.FormEvent) => {
@@ -64,6 +65,7 @@ const AdminPanel: React.FC = () => {
     await adminAdjustBalance(user.id, editingUser.id, parseFloat(editBalances.fiat), parseFloat(editBalances.crypto));
     setEditingUser(null);
     if (editingUser.id === user.id) refreshUser();
+    loadData();
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -77,9 +79,9 @@ const AdminPanel: React.FC = () => {
     });
     setShowCreateModal(false);
     setNewUser({ name: '', email: '', password: '', initialBalance: 0 });
+    loadData();
   };
 
-  // Fix: Added handleDownloadDump to provide the Core Dump download functionality
   const handleDownloadDump = () => {
     const data = generateSystemDump();
     const blob = new Blob([data], { type: 'application/json' });
@@ -95,103 +97,124 @@ const AdminPanel: React.FC = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh] space-y-8">
-        <div className="p-6 bg-red-500/10 rounded-full border border-red-500/20">
-          <ShieldCheck size={64} className="text-red-500" />
+      <div className="flex flex-col items-center justify-center h-[70vh] space-y-8 animate-in fade-in">
+        <div className="p-8 bg-nuPurple/10 rounded-full border border-nuPurple/20 shadow-2xl">
+          <ShieldCheck size={72} className="text-nuPurple" />
         </div>
         <div className="text-center">
-          <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Área de Segurança Máxima</h2>
-          <p className="text-zinc-500 text-xs mt-2 font-mono">INSIRA O TOKEN DE ACESSO CENTRAL</p>
+          <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Área de Segurança</h2>
+          <p className="text-gray-500 text-xs mt-2 font-mono uppercase tracking-widest">Acesso restrito ao Core Banking</p>
         </div>
-        <div onClick={() => setTwoFACode(generatedCode)} className="bg-dark-900 border border-dark-800 p-6 rounded-2xl text-center cursor-pointer hover:border-gold-500 transition-all group">
-           <p className="text-[10px] text-zinc-500 mb-2 uppercase font-bold group-hover:text-gold-500">Token Gerado (Clique para preencher)</p>
-           <p className="text-4xl font-mono font-bold text-white tracking-widest">{generatedCode}</p>
+        <div onClick={() => setTwoFACode(generatedCode)} className="bg-[#111111] border border-[#1c1c1c] p-8 rounded-3xl text-center cursor-pointer hover:border-nuPurple transition-all group shadow-xl">
+           <p className="text-[10px] text-gray-500 mb-3 uppercase font-black tracking-widest group-hover:text-nuPurple transition-colors">Token Gerado (Clique para preencher)</p>
+           <p className="text-5xl font-mono font-black text-white tracking-[0.2em]">{generatedCode}</p>
         </div>
-        <form onSubmit={handle2FASubmit} className="flex gap-2 w-full max-w-xs">
-          <input type="text" maxLength={4} value={twoFACode} onChange={e => setTwoFACode(e.target.value)} className="w-full bg-dark-950 border border-dark-800 p-4 rounded-xl text-white text-center font-mono focus:border-gold-500 outline-none" placeholder="OTP" />
-          <button type="submit" className="bg-gold-500 text-black px-6 rounded-xl font-black uppercase text-xs">Entrar</button>
+        <form onSubmit={handle2FASubmit} className="flex gap-3 w-full max-w-xs">
+          <input type="text" maxLength={4} value={twoFACode} onChange={e => setTwoFACode(e.target.value)} className="w-full bg-black border border-[#1c1c1c] p-5 rounded-2xl text-white text-center font-mono text-xl focus:border-nuPurple outline-none transition-all" placeholder="0000" />
+          <button type="submit" className="bg-nuPurple text-white px-8 rounded-2xl font-black uppercase text-xs shadow-lg hover:bg-nuPurple-hover transition-all active:scale-95">Entrar</button>
         </form>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-20">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-dark-800 pb-6">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <h2 className="text-2xl font-black text-white uppercase flex items-center gap-2">
-              <ShieldCheck className="text-red-500"/> Central de Comando
-            </h2>
-            <div className="flex items-center gap-1.5 bg-green-500/10 text-green-500 px-2 py-0.5 rounded text-[10px] font-black border border-green-500/20">
-              <Activity size={12} className="animate-pulse" /> LIVE STREAM
-            </div>
+    <div className="space-y-8 animate-in fade-in duration-500 pb-24 max-w-5xl mx-auto">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-6 border-b border-[#1c1c1c] pb-8">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-nuPurple rounded-2xl">
+            <ShieldCheck className="text-white" size={32}/>
           </div>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-mono">Monitoramento de Ledger e Auditoria em Tempo Real</p>
+          <div>
+            <h2 className="text-2xl font-black text-white tracking-tighter italic flex items-center gap-3">
+              Admin Control
+              <span className="flex items-center gap-1.5 bg-green-500/10 text-green-500 px-3 py-1 rounded-full text-[10px] font-black border border-green-500/20">
+                <Activity size={12} className="animate-pulse" /> LIVE
+              </span>
+            </h2>
+            <p className="text-[10px] text-gray-500 uppercase tracking-widest font-mono mt-1">BinaryMind Ledger V1 Management</p>
+          </div>
         </div>
-        <div className="flex bg-dark-900 p-1 rounded-xl border border-dark-800">
-          <button onClick={() => setActiveTab('users')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${activeTab === 'users' ? 'bg-dark-800 text-gold-500' : 'text-zinc-500'}`}>Clientes</button>
-          <button onClick={() => setActiveTab('audit')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${activeTab === 'audit' ? 'bg-dark-800 text-gold-500' : 'text-zinc-500'}`}>Logs</button>
-          <button onClick={() => setActiveTab('system')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${activeTab === 'system' ? 'bg-dark-800 text-gold-500' : 'text-zinc-500'}`}>Sistema</button>
+        <div className="flex bg-[#111111] p-1.5 rounded-2xl border border-[#1c1c1c] shadow-md">
+          <button onClick={() => setActiveTab('users')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all tracking-widest ${activeTab === 'users' ? 'bg-nuPurple text-white' : 'text-gray-500 hover:text-white'}`}>Clientes</button>
+          <button onClick={() => setActiveTab('audit')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all tracking-widest ${activeTab === 'audit' ? 'bg-nuPurple text-white' : 'text-gray-500 hover:text-white'}`}>Logs</button>
+          <button onClick={() => setActiveTab('system')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all tracking-widest ${activeTab === 'system' ? 'bg-nuPurple text-white' : 'text-gray-500 hover:text-white'}`}>Sistema</button>
         </div>
       </div>
 
       {activeTab === 'users' && (
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="font-bold text-white text-sm uppercase tracking-widest flex items-center gap-2">Registros Ativos <span className="bg-dark-800 text-zinc-500 px-2 rounded-full text-[10px]">{users.length}</span></h3>
-            <button onClick={() => setShowCreateModal(true)} className="bg-gold-500 text-black p-2 rounded-lg font-bold text-xs flex items-center gap-2"><UserPlus size={16}/> CADASTRAR CLIENTE</button>
+        <div className="space-y-6">
+          <div className="flex justify-between items-center px-2">
+            <h3 className="font-bold text-white text-sm uppercase tracking-widest flex items-center gap-3">Registros <span className="bg-nuPurple/10 text-nuPurple px-3 py-0.5 rounded-full text-[11px]">{users.length}</span></h3>
+            <button onClick={() => setShowCreateModal(true)} className="bg-nuPurple hover:bg-nuPurple-hover text-white px-6 py-3 rounded-full font-black text-xs flex items-center gap-2 shadow-lg transition-all active:scale-95"><UserPlus size={18}/> Novo Cliente</button>
           </div>
-          <div className="bg-dark-900 border border-dark-800 rounded-2xl overflow-hidden shadow-2xl">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-dark-950 text-zinc-500 uppercase font-black tracking-widest">
-                <tr>
-                  <th className="p-4">Usuário</th>
-                  <th className="p-4">Identificador</th>
-                  <th className="p-4">Patrimônio</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4 text-right">Controle</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-dark-800">
-                {users.map(u => (
-                  <tr key={u.id} className="hover:bg-dark-800/30 transition-colors">
-                    <td className="p-4 font-bold text-white">{u.name}</td>
-                    <td className="p-4 text-zinc-500 font-mono">{u.email}</td>
-                    <td className="p-4 font-mono">
-                      <p className="text-zinc-300">{CURRENCY_SYMBOL} {u.balanceFiat.toLocaleString()}</p>
-                      <p className="text-gold-500 text-[10px]">{u.balanceCrypto} {CRYPTO_SYMBOL}</p>
-                    </td>
-                    <td className="p-4">
-                      {u.isBlocked ? <span className="text-red-500 font-bold uppercase text-[9px]">Suspenso</span> : <span className="text-green-500 font-bold uppercase text-[9px]">Operacional</span>}
-                    </td>
-                    <td className="p-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button onClick={() => { setEditingUser(u); setEditBalances({ fiat: u.balanceFiat.toString(), crypto: u.balanceCrypto.toString() }); }} className="bg-blue-500/10 text-blue-500 border border-blue-500/20 px-2 py-1 rounded text-[9px] font-bold">EDITAR</button>
-                        <button onClick={() => toggleBlockUser(u)} className={`${u.isBlocked ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'} px-2 py-1 rounded text-[9px] font-bold border ${u.isBlocked ? 'border-green-500/20' : 'border-red-500/20'}`}>
-                          {u.isBlocked ? 'REATIVAR' : 'SUSPENDER'}
-                        </button>
-                      </div>
-                    </td>
+          <div className="bg-[#111111] border border-[#1c1c1c] rounded-[2rem] overflow-hidden shadow-xl">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-black text-gray-500 uppercase font-black tracking-widest border-b border-[#1c1c1c]">
+                  <tr>
+                    <th className="p-6">Titular</th>
+                    <th className="p-6">E-mail</th>
+                    <th className="p-6">Saldos</th>
+                    <th className="p-6">Estado</th>
+                    <th className="p-6 text-right">Ações</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-[#1c1c1c]">
+                  {users.map(u => (
+                    <tr key={u.id} className="hover:bg-[#1a1a1a] transition-colors">
+                      <td className="p-6">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-nuPurple/10 rounded-full flex items-center justify-center text-nuPurple font-bold">{u.name.charAt(0)}</div>
+                          <span className="font-bold text-white">{u.name}</span>
+                        </div>
+                      </td>
+                      <td className="p-6 text-gray-500 font-mono">{u.email}</td>
+                      <td className="p-6">
+                        <div className="font-mono">
+                          <p className="text-white font-bold">{CURRENCY_SYMBOL} {u.balanceFiat.toLocaleString()}</p>
+                          <p className="text-nuPurple text-[10px] font-black">{u.balanceCrypto} {CRYPTO_SYMBOL}</p>
+                        </div>
+                      </td>
+                      <td className="p-6">
+                        {u.isBlocked ? (
+                          <span className="bg-red-500/10 text-red-500 px-3 py-1 rounded-full font-black uppercase text-[9px] border border-red-500/20">Suspenso</span>
+                        ) : (
+                          <span className="bg-green-500/10 text-green-500 px-3 py-1 rounded-full font-black uppercase text-[9px] border border-green-500/20">Ativo</span>
+                        )}
+                      </td>
+                      <td className="p-6 text-right">
+                        <div className="flex justify-end gap-3">
+                          <button onClick={() => { setEditingUser(u); setEditBalances({ fiat: u.balanceFiat.toString(), crypto: u.balanceCrypto.toString() }); }} className="bg-nuPurple text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase shadow-md hover:bg-nuPurple-hover transition-all">Saldos</button>
+                          <button onClick={() => toggleBlockUser(u)} className={`${u.isBlocked ? 'bg-green-500 hover:bg-green-400' : 'bg-red-600 hover:bg-red-500'} text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase shadow-md transition-all`}>
+                            {u.isBlocked ? 'Reativar' : 'Bloquear'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
 
       {activeTab === 'audit' && (
-        <div className="bg-dark-900 border border-dark-800 rounded-2xl p-6">
-          <h3 className="font-bold text-white mb-6 uppercase tracking-widest text-sm flex items-center gap-2"><FileText size={18}/> Auditoria Global</h3>
-          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-            {audits.length === 0 ? <p className="text-center text-zinc-600 py-10 italic">Nenhum log registrado.</p> : audits.map(log => (
-              <div key={log.id} className="p-3 bg-dark-950 border border-dark-800 rounded-xl flex justify-between items-start">
+        <div className="bg-[#111111] border border-[#1c1c1c] rounded-[2rem] p-8 shadow-xl">
+          <h3 className="font-black text-white mb-8 uppercase tracking-widest text-sm flex items-center gap-3"><FileText size={20} className="text-nuPurple"/> Registro de Auditoria</h3>
+          <div className="space-y-3 max-h-[600px] overflow-y-auto pr-4 scrollbar-hide">
+            {audits.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24 text-center opacity-20">
+                <FileText size={48} />
+                <p className="text-xs uppercase font-black mt-4">Nenhum evento registrado no Ledger</p>
+              </div>
+            ) : audits.map(log => (
+              <div key={log.id} className="p-5 bg-black border border-[#1c1c1c] rounded-[1.5rem] flex justify-between items-center group hover:border-nuPurple/30 transition-all">
                 <div>
-                  <p className="text-gold-500 font-black text-[10px] uppercase">{log.action}</p>
-                  <p className="text-zinc-300 text-xs mt-1">{log.details}</p>
+                  <p className="text-nuPurple font-black text-[11px] uppercase tracking-widest">{log.action}</p>
+                  <p className="text-gray-300 text-sm mt-1.5">{log.details}</p>
                 </div>
-                <span className="text-[9px] text-zinc-600 font-mono">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                <span className="text-[10px] text-gray-600 font-mono font-bold">{new Date(log.timestamp).toLocaleTimeString()}</span>
               </div>
             ))}
           </div>
@@ -199,56 +222,69 @@ const AdminPanel: React.FC = () => {
       )}
 
       {activeTab === 'system' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-dark-900 border border-dark-800 rounded-2xl p-6">
-            <h3 className="font-bold text-red-500 mb-4 uppercase text-xs flex items-center gap-2"><ServerCrash size={16}/> Terminal de Emergência</h3>
-            <p className="text-zinc-500 text-[10px] mb-6 leading-relaxed">Apagar todos os dados do banco e reinicializar as tabelas de sistema.</p>
-            <button onClick={factoryResetSystem} className="w-full bg-red-600 hover:bg-red-700 text-white p-4 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2">
-              <RefreshCw size={18} /> RESETAR INFRAESTRUTURA (FULL WIPE)
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="bg-[#111111] border border-[#1c1c1c] rounded-[2rem] p-8 shadow-xl flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-3 text-red-500 mb-6">
+                <ServerCrash size={24}/>
+                <h3 className="font-black uppercase text-sm tracking-widest">Painel de Crise</h3>
+              </div>
+              <p className="text-gray-500 text-xs mb-8 leading-relaxed font-bold uppercase tracking-widest opacity-60">Resetar permanentemente todas as tabelas e usuários do sistema BinaryMind.</p>
+            </div>
+            <button onClick={() => { if(confirm("DESEJA APAGAR TUDO?")) factoryResetSystem(); }} className="w-full bg-red-600 hover:bg-red-700 text-white p-5 rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-3 shadow-xl active:scale-95">
+              <RefreshCw size={20} /> RESET INFRAESTRUTURA
             </button>
           </div>
-          <div className="bg-dark-900 border border-dark-800 rounded-2xl p-6">
-            <h3 className="font-bold text-blue-400 mb-4 uppercase text-xs flex items-center gap-2"><Database size={16}/> Backup Ledger</h3>
-            <p className="text-zinc-500 text-[10px] mb-6 leading-relaxed">Baixar o estado atual do banco de dados em formato JSON para análise off-site.</p>
-            <button onClick={handleDownloadDump} className="w-full bg-blue-900/30 hover:bg-blue-900/50 text-blue-200 border border-blue-800/50 p-4 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2">
-              <Download size={18} /> DOWNLOAD CORE DUMP
+          <div className="bg-[#111111] border border-[#1c1c1c] rounded-[2rem] p-8 shadow-xl flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-3 text-nuPurple mb-6">
+                <Database size={24}/>
+                <h3 className="font-black uppercase text-sm tracking-widest">Exportação Central</h3>
+              </div>
+              <p className="text-gray-500 text-xs mb-8 leading-relaxed font-bold uppercase tracking-widest opacity-60">Gerar snapshot completo do banco de dados para backup administrativo offline.</p>
+            </div>
+            <button onClick={handleDownloadDump} className="w-full bg-nuPurple hover:bg-nuPurple-hover text-white p-5 rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-3 shadow-xl active:scale-95">
+              <Download size={20} /> BAIXAR CORE DUMP
             </button>
           </div>
         </div>
       )}
 
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4 backdrop-blur-xl animate-in zoom-in duration-200">
-          <div className="bg-dark-900 border border-dark-800 rounded-3xl w-full max-w-md p-8 relative shadow-2xl">
-            <button onClick={() => setShowCreateModal(false)} className="absolute top-6 right-6 text-zinc-500 hover:text-white"><X size={24}/></button>
-            <h3 className="text-xl font-black text-white mb-6 uppercase tracking-tighter">Injetar Novo Usuário</h3>
-            <form onSubmit={handleCreateUser} className="space-y-4">
-              <input required type="text" placeholder="NOME COMPLETO" className="w-full bg-dark-950 border border-dark-800 p-4 rounded-xl text-white font-bold outline-none focus:border-gold-500" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} />
-              <input required type="email" placeholder="E-MAIL" className="w-full bg-dark-950 border border-dark-800 p-4 rounded-xl text-white font-bold outline-none focus:border-gold-500" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} />
-              <input required type="text" placeholder="SENHA" className="w-full bg-dark-950 border border-dark-800 p-4 rounded-xl text-white font-bold outline-none focus:border-gold-500" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
-              <input required type="number" placeholder="SALDO INICIAL FIAT" className="w-full bg-dark-950 border border-dark-800 p-4 rounded-xl text-white font-bold outline-none focus:border-gold-500" value={newUser.initialBalance} onChange={e => setNewUser({...newUser, initialBalance: parseFloat(e.target.value)})} />
-              <button type="submit" className="w-full bg-gold-500 text-black p-4 rounded-xl font-black uppercase text-xs mt-4">Validar e Registrar</button>
+        <div className="fixed inset-0 bg-black/98 z-[300] flex items-center justify-center p-4 backdrop-blur-3xl animate-in zoom-in duration-200">
+          <div className="bg-[#111111] border border-[#1c1c1c] rounded-[2.5rem] w-full max-w-md p-10 relative shadow-2xl">
+            <button onClick={() => setShowCreateModal(false)} className="absolute top-8 right-8 text-gray-500 hover:text-white transition-colors"><X size={32}/></button>
+            <h3 className="text-2xl font-black text-white mb-8 tracking-tighter italic">Novo Registro</h3>
+            <form onSubmit={handleCreateUser} className="space-y-5">
+              <input required type="text" placeholder="Nome do Titular" className="w-full bg-black border border-[#1c1c1c] p-5 rounded-2xl text-white font-bold outline-none focus:border-nuPurple transition-all" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} />
+              <input required type="email" placeholder="E-mail de rede" className="w-full bg-black border border-[#1c1c1c] p-5 rounded-2xl text-white font-bold outline-none focus:border-nuPurple transition-all" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} />
+              <input required type="text" placeholder="Senha inicial" className="w-full bg-black border border-[#1c1c1c] p-5 rounded-2xl text-white font-bold outline-none focus:border-nuPurple transition-all" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
+              <div className="bg-black border border-[#1c1c1c] p-4 rounded-2xl">
+                <label className="text-[10px] text-gray-500 uppercase font-black mb-1 block">Saldo Inicial ({CURRENCY_SYMBOL})</label>
+                <input required type="number" step="0.01" className="bg-transparent text-white text-3xl font-mono font-black outline-none w-full" value={newUser.initialBalance} onChange={e => setNewUser({...newUser, initialBalance: parseFloat(e.target.value)})} />
+              </div>
+              <button type="submit" className="w-full bg-nuPurple text-white p-5 rounded-full font-black uppercase text-sm mt-4 shadow-xl active:scale-95">Injetar na Rede</button>
             </form>
           </div>
         </div>
       )}
 
       {editingUser && (
-        <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4 backdrop-blur-xl animate-in zoom-in duration-200">
-          <div className="bg-dark-900 border border-dark-800 rounded-3xl w-full max-w-md p-8 relative shadow-2xl">
-            <button onClick={() => setEditingUser(null)} className="absolute top-6 right-6 text-zinc-500 hover:text-white"><X size={24}/></button>
-            <h3 className="text-xl font-black text-white mb-2 uppercase tracking-tighter">Ajuste de Ativos</h3>
-            <p className="text-[10px] text-zinc-500 mb-8 font-mono">USUÁRIO: {editingUser.name}</p>
-            <form onSubmit={handleSaveBalance} className="space-y-6">
-              <div className="bg-dark-950 p-4 rounded-2xl border border-dark-800">
-                <label className="text-[10px] text-zinc-500 uppercase font-black mb-2 block">Saldo Fiat ({CURRENCY_SYMBOL})</label>
-                <input type="number" step="0.01" className="bg-transparent text-white text-3xl font-mono font-bold outline-none w-full" value={editBalances.fiat} onChange={e => setEditBalances({...editBalances, fiat: e.target.value})} />
+        <div className="fixed inset-0 bg-black/98 z-[300] flex items-center justify-center p-4 backdrop-blur-3xl animate-in zoom-in duration-200">
+          <div className="bg-[#111111] border border-[#1c1c1c] rounded-[2.5rem] w-full max-w-md p-10 relative shadow-2xl">
+            <button onClick={() => setEditingUser(null)} className="absolute top-8 right-8 text-gray-500 hover:text-white transition-colors"><X size={32}/></button>
+            <h3 className="text-2xl font-black text-white mb-2 tracking-tighter italic">Editar Ativos</h3>
+            <p className="text-[10px] text-nuPurple mb-10 font-black uppercase tracking-widest">Titular: {editingUser.name}</p>
+            <form onSubmit={handleSaveBalance} className="space-y-8">
+              <div className="bg-black p-5 rounded-[2rem] border border-[#1c1c1c]">
+                <label className="text-[10px] text-gray-500 uppercase font-black mb-2 block">Saldo em Conta ({CURRENCY_SYMBOL})</label>
+                <input type="number" step="0.01" className="bg-transparent text-white text-4xl font-mono font-black outline-none w-full" value={editBalances.fiat} onChange={e => setEditBalances({...editBalances, fiat: e.target.value})} />
               </div>
-              <div className="bg-dark-950 p-4 rounded-2xl border border-dark-800">
-                <label className="text-[10px] text-zinc-500 uppercase font-black mb-2 block">Saldo Crypto ({CRYPTO_SYMBOL})</label>
-                <input type="number" step="0.0001" className="bg-transparent text-white text-3xl font-mono font-bold outline-none w-full" value={editBalances.crypto} onChange={e => setEditBalances({...editBalances, crypto: e.target.value})} />
+              <div className="bg-black p-5 rounded-[2rem] border border-[#1c1c1c]">
+                <label className="text-[10px] text-gray-500 uppercase font-black mb-2 block">Saldo em Ativos ({CRYPTO_SYMBOL})</label>
+                <input type="number" step="0.0001" className="bg-transparent text-white text-4xl font-mono font-black outline-none w-full" value={editBalances.crypto} onChange={e => setEditBalances({...editBalances, crypto: e.target.value})} />
               </div>
-              <button type="submit" className="w-full bg-blue-600 text-white p-4 rounded-xl font-black uppercase text-xs">Salvar Alterações</button>
+              <button type="submit" className="w-full bg-white text-black p-5 rounded-full font-black uppercase text-sm shadow-xl active:scale-95">Gravar Alterações</button>
             </form>
           </div>
         </div>

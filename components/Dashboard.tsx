@@ -1,16 +1,17 @@
 
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState } from 'react';
 import { AppContext } from '../App';
 import { CURRENCY_SYMBOL, CRYPTO_SYMBOL } from '../constants';
 import { MarketChart } from './Market'; 
 import StakingPanel from './Staking';
 import SettingsPanel from './Settings';
 import RankingPanel from './Ranking';
+import AIAdvisor from './AIAdvisor';
 import { 
-  Wallet, TrendingUp, History, Lock, AlertCircle, Eye, EyeOff, Send, QrCode, 
-  Barcode, ArrowRightLeft, User as UserIcon, X, Trophy, Search, CheckCircle, Loader2, ArrowUpRight, ArrowDownRight
+  Eye, EyeOff, Send, QrCode, TrendingUp, Lock, ChevronRight, 
+  Wallet, DollarSign, BrainCircuit, Trophy, PlusCircle, Smartphone, X
 } from 'lucide-react';
-import { buyCrypto, sellCrypto, transferFiat, getPublicDirectory } from '../services/api';
+import { buyCrypto, sellCrypto, transferFiat } from '../services/api';
 
 const Dashboard: React.FC<{ currentView: string, setView: (v: string) => void }> = ({ currentView, setView }) => {
   const { user, market, refreshUser, privacyMode, togglePrivacy } = useContext(AppContext);
@@ -20,29 +21,14 @@ const Dashboard: React.FC<{ currentView: string, setView: (v: string) => void }>
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferEmail, setTransferEmail] = useState('');
   const [transferValue, setTransferValue] = useState('');
-  const [transferLoading, setTransferLoading] = useState(false);
-  const [directory, setDirectory] = useState<any[]>([]);
-
-  useEffect(() => {
-    const fetchDir = async () => {
-      if (user) {
-        const dir = await getPublicDirectory(user.id);
-        setDirectory(dir);
-      }
-    };
-    fetchDir();
-    window.addEventListener('storage_update', fetchDir);
-    return () => window.removeEventListener('storage_update', fetchDir);
-  }, [user]);
 
   if (!user || !market) return null;
 
   const handleTrade = async (type: 'buy' | 'sell') => {
     setError('');
-    setSuccess('');
     const val = parseFloat(tradeAmount);
     if (isNaN(val) || val <= 0) {
-      setError('Quantidade inválida. Por favor, insira um valor numérico positivo.');
+      setError('Valor inválido.');
       return;
     }
     try {
@@ -50,195 +36,171 @@ const Dashboard: React.FC<{ currentView: string, setView: (v: string) => void }>
       else await sellCrypto(user.id, val, market.currentPrice);
       setTradeAmount('');
       refreshUser();
-      setSuccess('Ordem de mercado executada e registrada na rede.');
+      setSuccess('Ordem executada com sucesso.');
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) { setError(err.message); }
   };
 
-  const handleTransfer = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setTransferLoading(true);
-    try {
-      await transferFiat(user.id, transferEmail, parseFloat(transferValue));
-      alert("Transferência enviada e validada pelos nós da rede.");
-      setShowTransferModal(false);
-      setTransferEmail('');
-      setTransferValue('');
-      refreshUser();
-    } catch (err: any) { alert(err.message); }
-    finally { setTransferLoading(false); }
-  }
-
   const MaskedValue = ({ value, isCrypto = false, prefix = '' }: { value: number, isCrypto?: boolean, prefix?: string }) => {
-    if (privacyMode) return <span className="bg-dark-800 text-transparent rounded animate-pulse select-none">••••••</span>;
-    if (isCrypto) return <span className="font-mono">{value.toLocaleString('pt-BR', { minimumFractionDigits: 4 })}</span>;
-    return <span className="font-mono">{prefix} {value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>;
+    if (privacyMode) return <span className="bg-nuPurple/20 text-transparent rounded px-2 select-none">••••••</span>;
+    if (isCrypto) return <span>{value.toLocaleString('pt-BR', { minimumFractionDigits: 4 })}</span>;
+    return <span>{prefix} {value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>;
   };
 
   const Overview = () => (
-    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Premium Glass Header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-dark-900 to-black border border-dark-800 p-8 rounded-[2rem] shadow-2xl">
-        <div className="absolute top-0 right-0 p-8 opacity-10">
-           <TrendingUp size={120} />
+    <div className="space-y-6 max-w-lg mx-auto pb-24 animate-in fade-in slide-in-from-bottom-2">
+      {/* Header Profile */}
+      <div className="flex justify-between items-center mb-6 px-2">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-nuPurple flex items-center justify-center text-white font-bold text-lg shadow-lg">
+            {user.name.charAt(0).toUpperCase()}
+          </div>
+          <p className="text-xl font-bold text-white">Olá, {user.name.split(' ')[0]}</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={togglePrivacy} className="p-3 text-white hover:bg-white/10 rounded-full transition-all">
+            {privacyMode ? <EyeOff size={24} /> : <Eye size={24} />}
+          </button>
+          <button className="p-3 text-white hover:bg-white/10 rounded-full transition-all">
+            <PlusCircle size={24} />
+          </button>
+        </div>
+      </div>
+
+      {/* Conta Card */}
+      <div className="bg-[#111111] p-6 rounded-3xl group cursor-pointer hover:bg-[#1a1a1a] transition-colors border border-[#1c1c1c] shadow-md">
+        <div className="flex justify-between items-center mb-4">
+          <p className="font-bold text-white text-lg">Conta</p>
+          <ChevronRight size={20} className="text-gray-600 group-hover:text-nuPurple transition-colors" />
+        </div>
+        <p className="text-3xl font-black text-white">
+          <MaskedValue value={user.balanceFiat} prefix={CURRENCY_SYMBOL} />
+        </p>
+      </div>
+
+      {/* Action Buttons Horizontal */}
+      <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide px-1">
+        {[
+          { icon: QrCode, label: 'Área Pix' },
+          { icon: Send, label: 'Transferir' },
+          { icon: Smartphone, label: 'Recarga' },
+          { icon: Wallet, label: 'Depositar' },
+          { icon: DollarSign, label: 'Pagar' }
+        ].map((btn, i) => (
+          <div key={i} className="flex flex-col items-center gap-2 min-w-[80px]">
+            <button 
+              onClick={() => btn.label === 'Transferir' && setShowTransferModal(true)}
+              className="w-16 h-16 bg-[#111111] rounded-full flex items-center justify-center text-white hover:bg-[#222222] border border-[#1c1c1c] transition-all active:scale-90"
+            >
+              <btn.icon size={26} />
+            </button>
+            <span className="text-[11px] font-bold text-gray-300">{btn.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Ativos Card (Investimentos) */}
+      <div className="bg-[#111111] p-6 rounded-3xl border border-[#1c1c1c] shadow-md">
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center gap-3">
+             <TrendingUp className="text-nuPurple" size={24} />
+             <p className="font-bold text-white text-lg">Investimentos MDC</p>
+          </div>
+          <ChevronRight size={20} className="text-gray-600" />
+        </div>
+        <div className="space-y-1">
+          <p className="text-gray-400 text-xs uppercase font-bold tracking-widest">Saldo total em ativos</p>
+          <p className="text-2xl font-black text-white">
+            <MaskedValue value={user.balanceCrypto} isCrypto /> <span className="text-sm font-bold opacity-40">{CRYPTO_SYMBOL}</span>
+          </p>
         </div>
         
-        <div className="flex justify-between items-start mb-12">
-           <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-gold-500 flex items-center justify-center text-black shadow-[0_0_30px_-5px_rgba(245,158,11,0.4)]">
-                <UserIcon size={28} />
-              </div>
+        <div className="mt-6 pt-6 border-t border-[#1c1c1c]">
+           <div className="flex justify-between items-end mb-4">
               <div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic">Membro Prime</h2>
-                <p className="text-zinc-500 text-xs font-mono uppercase tracking-widest">{user.name}</p>
+                <p className="text-xs text-gray-500 font-bold uppercase mb-1">Cotação Atual</p>
+                <p className="text-lg font-mono font-black text-white">{CURRENCY_SYMBOL} {market.currentPrice.toLocaleString()}</p>
               </div>
+              <button 
+                onClick={() => setView('market')} 
+                className="bg-nuPurple hover:bg-nuPurple-hover text-white px-5 py-2.5 rounded-full font-bold text-xs shadow-lg transition-all active:scale-95"
+              >
+                Negociar
+              </button>
            </div>
-           <button onClick={togglePrivacy} className="p-3 bg-dark-800/50 hover:bg-dark-800 text-gold-500 rounded-2xl transition-all">
-             {privacyMode ? <EyeOff size={22} /> : <Eye size={22} />}
-           </button>
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.3em] mb-4">Total Patrimonial Ledger</p>
-          <div className="flex items-baseline gap-3">
-             <h1 className="text-6xl font-black text-white tracking-tighter">
-               <MaskedValue value={user.balanceFiat} prefix={CURRENCY_SYMBOL} />
-             </h1>
-          </div>
-          <div className="flex items-center gap-4 pt-6">
-             <div className="flex items-center gap-2 bg-green-500/10 text-green-500 px-3 py-1.5 rounded-xl border border-green-500/20 text-[10px] font-black">
-                <ArrowUpRight size={14} /> + 0.24% HOJE
-             </div>
-             <div className="text-zinc-500 text-[10px] font-mono uppercase tracking-widest">
-               Liquidez Imediata Ativa
-             </div>
-          </div>
+           <div className="bg-black/20 rounded-2xl p-2 border border-[#1c1c1c]">
+              <MarketChart data={market.priceHistory} />
+           </div>
         </div>
       </div>
 
-      {/* Grid de Ativos Digitais */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-         <div className="bg-dark-900/50 backdrop-blur-md border border-dark-800 p-6 rounded-[1.5rem] hover:border-gold-500/30 transition-all group">
-            <div className="flex justify-between items-center mb-6">
-               <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gold-500/10 text-gold-500 flex items-center justify-center border border-gold-500/20 group-hover:scale-110 transition-transform">
-                    <TrendingUp size={20} />
-                  </div>
-                  <h3 className="font-black text-white uppercase tracking-widest text-xs">BinaryMind Coin (MDC)</h3>
-               </div>
-               <span className="text-[10px] bg-dark-800 px-2 py-1 rounded-lg text-zinc-400 font-mono">TAXA FIXA</span>
-            </div>
-            <p className="text-3xl font-black text-white mb-2 tracking-tighter">
-              <MaskedValue value={user.balanceCrypto} isCrypto />
-            </p>
-            <p className="text-[10px] text-zinc-500 font-mono uppercase">Equivalente: {CURRENCY_SYMBOL} {(user.balanceCrypto * market.currentPrice).toLocaleString()}</p>
+      {/* Meus Cartões */}
+      <div className="bg-[#111111] p-6 rounded-3xl border border-[#1c1c1c] flex items-center gap-4 hover:bg-[#1a1a1a] transition-colors cursor-pointer">
+         <div className="p-2 bg-nuPurple/10 rounded-lg">
+           <Smartphone className="text-nuPurple" />
          </div>
+         <p className="font-bold text-white">Meus cartões virtuais</p>
+      </div>
 
-         <div className="bg-dark-900/50 backdrop-blur-md border border-dark-800 p-6 rounded-[1.5rem] hover:border-blue-500/30 transition-all group">
-            <div className="flex justify-between items-center mb-6">
-               <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20 group-hover:scale-110 transition-transform">
-                    <Barcode size={20} />
-                  </div>
-                  <h3 className="font-black text-white uppercase tracking-widest text-xs">Crédito Disponível</h3>
-               </div>
+      {/* Advisor Shortcut */}
+      <div 
+        className="bg-[#111111] p-6 rounded-3xl border border-[#1c1c1c] cursor-pointer hover:bg-[#1a1a1a] transition-all group" 
+        onClick={() => setView('ai_advisor')}
+      >
+         <div className="flex gap-4">
+            <div className="w-12 h-12 bg-nuPurple/10 rounded-2xl flex items-center justify-center text-nuPurple group-hover:scale-110 transition-transform">
+               <BrainCircuit />
             </div>
-            <p className="text-3xl font-black text-white mb-2 tracking-tighter">
-              <MaskedValue value={user.creditCard.limit} prefix={CURRENCY_SYMBOL} />
-            </p>
-            <div className="w-full bg-dark-800 h-1 rounded-full overflow-hidden mt-4">
-               <div className="bg-blue-500 h-full w-[15%]" />
+            <div>
+               <p className="font-bold text-white">NuAdvisor AI</p>
+               <p className="text-xs text-gray-500">Consultoria inteligente para sua carteira MDC.</p>
             </div>
          </div>
       </div>
 
-      {/* Ações Rápidas */}
-      <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-         {[
-           { icon: QrCode, label: 'Pix', color: 'text-gold-500' },
-           { icon: Send, label: 'Enviar', color: 'text-blue-400' },
-           { icon: Lock, label: 'Stake', color: 'text-purple-400' },
-           { icon: Trophy, label: 'Elite', color: 'text-zinc-100' },
-           { icon: TrendingUp, label: 'Trade', color: 'text-green-400' }
-         ].map((action, i) => (
-           <button 
-            key={i} 
-            onClick={() => {
-              if (action.label === 'Enviar') setShowTransferModal(true);
-              else if (action.label === 'Trade') setView('market');
-              else if (action.label === 'Stake') setView('staking');
-              else if (action.label === 'Elite') setView('ranking');
-            }}
-            className="flex flex-col items-center gap-3 min-w-[100px] p-6 bg-dark-900 border border-dark-800 rounded-3xl hover:bg-dark-800 hover:border-zinc-600 transition-all group active:scale-95"
-           >
-              <div className={`${action.color} group-hover:scale-125 transition-transform`}>
-                <action.icon size={28} />
-              </div>
-              <span className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">{action.label}</span>
-           </button>
-         ))}
-      </div>
-
-      {/* Histórico Ledger */}
-      <div className="space-y-4">
-        <h3 className="text-xs font-black text-zinc-500 uppercase tracking-[0.3em] ml-2">Fluxo de Caixa Auditado</h3>
-        <div className="bg-dark-900 border border-dark-800 rounded-[2rem] overflow-hidden">
-          {user.transactions.length === 0 ? (
-            <div className="p-20 text-center text-zinc-700 italic text-sm">Nenhum evento registrado.</div>
-          ) : (
-            user.transactions.slice(0, 5).map(tx => (
-              <div key={tx.id} className="flex justify-between items-center p-6 border-b border-dark-800 last:border-0 hover:bg-dark-800/30 transition-colors">
-                 <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-2xl ${tx.amountFiat && tx.amountFiat > 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                       {tx.type.includes('IN') ? <ArrowUpRight size={20}/> : <ArrowDownRight size={20}/>}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-white">{tx.description}</p>
-                      <p className="text-[10px] text-zinc-500 font-mono">{new Date(tx.timestamp).toLocaleString()}</p>
-                    </div>
-                 </div>
-                 <div className="text-right">
-                   <p className={`font-mono text-sm font-black ${tx.type.includes('IN') ? 'text-green-500' : 'text-zinc-400'}`}>
-                     {tx.type.includes('IN') ? '+' : '-'} {CURRENCY_SYMBOL} {(tx.amountFiat || 0).toLocaleString()}
-                   </p>
-                   <p className="text-[9px] text-zinc-700 uppercase font-mono">{tx.id}</p>
-                 </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Modal Transferencia */}
       {showTransferModal && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[200] flex items-center justify-center p-6 animate-in fade-in duration-300">
-          <div className="bg-dark-900 border border-dark-800 w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl relative">
-             <button onClick={() => setShowTransferModal(false)} className="absolute top-8 right-8 text-zinc-500 hover:text-white transition-colors"><X size={28}/></button>
-             <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-8 italic">Transferência Global</h2>
-             <form onSubmit={handleTransfer} className="space-y-6">
-                <div>
-                   <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-2 block">Identificador de Rede</label>
-                   <input 
-                    type="email" 
-                    className="w-full bg-dark-950 border border-dark-800 rounded-2xl p-4 text-white font-bold outline-none focus:border-gold-500" 
-                    placeholder="nome@binarymind.com" 
-                    value={transferEmail}
-                    onChange={e => setTransferEmail(e.target.value)}
-                    required
-                   />
-                </div>
-                <div>
-                   <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-2 block">Montante (B$)</label>
-                   <input 
+        <div className="fixed inset-0 bg-black/95 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-6 animate-in slide-in-from-bottom duration-300">
+          <div className="bg-[#111111] border-t sm:border border-[#1c1c1c] w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] p-10 pb-20 sm:pb-10 relative shadow-2xl">
+             <button onClick={() => setShowTransferModal(false)} className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors">
+               <X size={32}/>
+             </button>
+             <h2 className="text-2xl font-black text-white mb-10">Qual o valor da transferência?</h2>
+             <form onSubmit={async (e) => {
+               e.preventDefault();
+               try {
+                 await transferFiat(user.id, transferEmail, parseFloat(transferValue));
+                 setShowTransferModal(false);
+                 refreshUser();
+                 setTransferEmail('');
+                 setTransferValue('');
+                 alert("Transferência realizada com sucesso.");
+               } catch (err: any) { alert(err.message); }
+             }} className="space-y-8">
+                <div className="relative">
+                  <span className="absolute left-0 bottom-4 text-4xl font-black text-nuPurple">{CURRENCY_SYMBOL}</span>
+                  <input 
                     type="number" 
-                    className="w-full bg-dark-950 border border-dark-800 rounded-2xl p-4 text-white font-mono text-3xl font-black outline-none focus:border-gold-500" 
-                    placeholder="0.00" 
+                    required
+                    autoFocus
+                    placeholder="0,00"
+                    className="w-full bg-transparent text-white font-black text-5xl outline-none border-b border-nuPurple/30 focus:border-nuPurple py-4 pl-14 transition-all"
                     value={transferValue}
                     onChange={e => setTransferValue(e.target.value)}
-                    required
-                   />
+                  />
                 </div>
-                <button type="submit" disabled={transferLoading} className="w-full bg-gold-500 text-black font-black py-5 rounded-2xl hover:bg-gold-400 transition-all shadow-xl shadow-gold-500/10">
-                   {transferLoading ? 'VALIDANDO BLOCO...' : 'CONFIRMAR ENVIO'}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-widest px-1">Destinatário</label>
+                  <input 
+                    type="email" 
+                    required
+                    placeholder="E-mail na rede BinaryMind"
+                    className="w-full bg-black border border-[#1c1c1c] rounded-2xl p-5 text-white outline-none focus:border-nuPurple transition-all"
+                    value={transferEmail}
+                    onChange={e => setTransferEmail(e.target.value)}
+                  />
+                </div>
+                <button type="submit" className="w-full bg-nuPurple hover:bg-nuPurple-hover text-white font-black py-5 rounded-full text-lg shadow-xl shadow-nuPurple/20 transition-all active:scale-95">
+                   Confirmar transferência
                 </button>
              </form>
           </div>
@@ -248,54 +210,57 @@ const Dashboard: React.FC<{ currentView: string, setView: (v: string) => void }>
   );
 
   const MarketView = () => (
-    <div className="space-y-10 animate-in fade-in duration-700">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-dark-900 border border-dark-800 p-8 rounded-[2.5rem]">
-           <div className="flex justify-between items-center mb-8">
-              <div>
-                <h3 className="text-xl font-black text-white uppercase tracking-tighter italic">Exchange Hub</h3>
-                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-mono">Volume Real-Time: MDC/B$</p>
-              </div>
-              <div className="text-right">
-                <p className={`text-2xl font-black ${market.trend === 'BULLISH' ? 'text-green-500' : 'text-red-500'}`}>
-                  {CURRENCY_SYMBOL} {market.currentPrice.toLocaleString()}
-                </p>
-                <p className="text-[10px] text-zinc-500 font-mono">COTAÇÃO ATUAL</p>
-              </div>
-           </div>
-           <MarketChart data={market.priceHistory} />
-        </div>
+    <div className="max-w-lg mx-auto space-y-6 animate-in fade-in pb-24">
+       <div className="flex items-center gap-4 mb-4">
+          <button onClick={() => setView('dashboard')} className="p-3 bg-[#111111] rounded-full text-nuPurple hover:bg-[#1a1a1a] transition-all">
+            <ChevronRight className="rotate-180" size={24} />
+          </button>
+          <h2 className="text-2xl font-black text-white tracking-tighter">Trade Center</h2>
+       </div>
 
-        <div className="bg-dark-900 border border-dark-800 p-8 rounded-[2.5rem] flex flex-col justify-between">
-           <div>
-              <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-8 italic">Terminal</h3>
-              <div className="space-y-6">
-                <div>
-                   <label className="text-[10px] text-zinc-500 font-black uppercase mb-2 block">Quantidade MDC</label>
-                   <input 
-                    type="number" 
-                    value={tradeAmount}
-                    onChange={e => setTradeAmount(e.target.value)}
-                    className="w-full bg-dark-950 border border-dark-800 rounded-2xl p-4 text-white font-mono text-2xl font-bold outline-none focus:border-gold-500"
-                   />
-                </div>
-                <div className="bg-dark-950 p-4 rounded-2xl border border-dark-800">
-                   <p className="text-[10px] text-zinc-500 uppercase font-black mb-1">Custo/Ganho Estimado</p>
-                   <p className="text-xl font-mono font-black text-white">
-                     {CURRENCY_SYMBOL} {(parseFloat(tradeAmount || '0') * market.currentPrice).toLocaleString()}
-                   </p>
-                </div>
-                {error && <p className="text-xs text-red-500 font-bold bg-red-950/20 p-2 rounded border border-red-900/30">{error}</p>}
-                {success && <p className="text-xs text-green-500 font-bold bg-green-950/20 p-2 rounded border border-green-900/30">{success}</p>}
-              </div>
-           </div>
-           
-           <div className="grid grid-cols-2 gap-4 mt-8">
-              <button onClick={() => handleTrade('buy')} className="bg-green-600 hover:bg-green-500 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-green-600/10">COMPRAR</button>
-              <button onClick={() => handleTrade('sell')} className="bg-red-600 hover:bg-red-500 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-red-600/10">VENDER</button>
-           </div>
-        </div>
-      </div>
+       <div className="bg-[#111111] p-6 rounded-3xl border border-[#1c1c1c] shadow-lg">
+          <div className="flex justify-between items-start mb-10">
+             <div>
+                <p className="text-gray-500 text-xs font-bold uppercase mb-1 tracking-widest">Cotação MDC</p>
+                <p className="text-4xl font-black text-white">{CURRENCY_SYMBOL} {market.currentPrice.toLocaleString()}</p>
+             </div>
+             <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${market.trend === 'BULLISH' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
+                {market.trend}
+             </div>
+          </div>
+          <div className="bg-black/30 rounded-2xl p-4">
+            <MarketChart data={market.priceHistory} />
+          </div>
+       </div>
+
+       <div className="bg-[#111111] p-8 rounded-3xl border border-[#1c1c1c] space-y-6 shadow-lg">
+          <div className="space-y-3">
+            <label className="text-xs font-bold text-gray-500 uppercase px-1 tracking-widest">Quanto você deseja negociar?</label>
+            <div className="relative">
+              <input 
+                type="number" 
+                value={tradeAmount}
+                onChange={e => setTradeAmount(e.target.value)}
+                className="w-full bg-black border border-[#1c1c1c] rounded-2xl p-5 text-white font-black text-4xl outline-none focus:border-nuPurple transition-all"
+                placeholder="0,00"
+              />
+              <span className="absolute right-5 bottom-6 text-xl font-bold text-nuPurple">{CRYPTO_SYMBOL}</span>
+            </div>
+          </div>
+          
+          <div className="flex justify-between text-sm font-bold text-gray-400 px-1 border-b border-[#1c1c1c] pb-4">
+             <span>Custo estimado:</span>
+             <span className="text-white">{CURRENCY_SYMBOL} {(parseFloat(tradeAmount || '0') * market.currentPrice).toLocaleString()}</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+             <button onClick={() => handleTrade('buy')} className="bg-nuPurple hover:bg-nuPurple-hover text-white font-black py-5 rounded-full text-sm shadow-lg transition-all active:scale-95">COMPRAR</button>
+             <button onClick={() => handleTrade('sell')} className="bg-white hover:bg-gray-100 text-black font-black py-5 rounded-full text-sm shadow-lg transition-all active:scale-95">VENDER</button>
+          </div>
+          
+          {error && <p className="text-center text-red-500 text-xs font-bold animate-pulse">{error}</p>}
+          {success && <p className="text-center text-green-500 text-xs font-bold">{success}</p>}
+       </div>
     </div>
   );
 
@@ -305,6 +270,7 @@ const Dashboard: React.FC<{ currentView: string, setView: (v: string) => void }>
     case 'ranking': return <RankingPanel />;
     case 'staking': return <StakingPanel />;
     case 'settings': return <SettingsPanel />;
+    case 'ai_advisor': return <AIAdvisor />;
     default: return <Overview />;
   }
 };
